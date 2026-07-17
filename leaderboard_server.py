@@ -1,10 +1,11 @@
 import hashlib
 import json
+import os
 import sqlite3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-DB_PATH = "leaderboard.db"
+DB_PATH = os.environ.get("DB_PATH", "leaderboard.db")
 PORT = 8765
 
 

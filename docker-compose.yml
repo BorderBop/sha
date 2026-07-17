@@ -1,0 +1,27 @@
+services:
+  leaderboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.leaderboard
+    volumes:
+      - leaderboard_data:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./build/web:/srv/game:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - leaderboard
+    restart: unless-stopped
+
+volumes:
+  leaderboard_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,10 @@
+games.glamkit.ai {
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy leaderboard:8765
+	}
+	handle {
+		root * /srv/game
+		file_server
+	}
+}
