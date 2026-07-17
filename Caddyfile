@@ -1,10 +1,17 @@
+# Этот блок нужно ДОБАВИТЬ в существующий системный /etc/caddy/Caddyfile
+# на сервере (не запускается отдельным контейнером - там уже есть свой Caddy,
+# держащий порты 80/443). После добавления: systemctl reload caddy
+#
+# Путь в `root` ниже предполагает, что репозиторий склонирован в /opt/sha -
+# поправьте, если клонировали в другое место.
+
 games.glamkit.ai {
 	handle /api/* {
 		uri strip_prefix /api
-		reverse_proxy leaderboard:8765
+		reverse_proxy 127.0.0.1:8765
 	}
 	handle {
-		root * /srv/game
+		root * /opt/sha/build/web
 		file_server
 	}
 }
