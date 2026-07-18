@@ -9,11 +9,13 @@ from config import (
     LINE_COLOR, TEXT_COLOR, TRAIL_LINE_WIDTH, SNAP_TOLERANCE,
     BALL_IMAGE_PATHS, BALL_IMAGE_PATH, player_speed,
     CURSOR_ANIMATION_PATHS, CURSOR_IMAGE_SIZE, CURSOR_SPEED, CURSOR_FRAME_DELAY,
+    CURSOR_INPUT_DEBOUNCE_FRAMES, CURSOR_WALL_SNAP_DISTANCE, CURSOR_WALL_LEAVE_DELAY_FRAMES,
     STARTING_LIVES, LIFE_ICON_GAP, LEVEL_UP_PERCENT,
     LEVEL_TIME_BASE_MINUTES, BALL_SPEED_MIN_FACTOR, BALL_SPEED_MAX_FACTOR,
     PANEL_WIDTH, PANEL_COLOR, PANEL_PADDING, PANEL_LINE_GAP,
     PROGRESS_BAR_HEIGHT, PROGRESS_BAR_BG_COLOR, PROGRESS_BAR_COLOR,
     LEADERBOARD_BASE_URL, USERNAME_MAX_LEN, PIN_LENGTH, LEADERBOARD_LIMIT,
+    BLUE_BALL_IMAGE_PATH, ISOLATION_BONUS_SCORE,
 )
 from images import load_image, load_ball_image
 from obstacles import OBSTACLES, make_initial_obstacles
@@ -21,7 +23,7 @@ from ball import Ball
 from cursor import Cursor
 from physics import resolve_ball_collision, resolve_ball_obstacle_collision
 from trail import is_touching_obstacles, get_leave_point, ball_touches_trail
-from capture import capture_enclosed_areas, get_captured_percent
+from capture import capture_enclosed_areas, get_captured_percent, find_ball_groups
 from scoring import calculate_score
 import net
 
@@ -30,12 +32,16 @@ balls = [
     for path in BALL_IMAGE_PATHS
 ]
 
+default_ball_image = load_ball_image(BALL_IMAGE_PATH)
+blue_ball_image = load_ball_image(BLUE_BALL_IMAGE_PATH)
+
 cursor = Cursor(
     0,
     SCREEN_HEIGHT // 2,
     [load_image(path, CURSOR_IMAGE_SIZE) for path in CURSOR_ANIMATION_PATHS],
     CURSOR_SPEED,
     CURSOR_FRAME_DELAY,
+    CURSOR_INPUT_DEBOUNCE_FRAMES,
 )
 
 lives = STARTING_LIVES
@@ -58,13 +64,14 @@ login_busy = False
 
 score_submitted = False
 leaderboard_entries = []
+isolated_ball_count = 0
 
 
 # Main async loop (works both on desktop and on the web via pygbag)
 async def main():
     global lives, game_over, elapsed_frames, banked_score, level, level_transition, level_up_gain, paused
     global logged_in, username, pin, active_field, login_status, login_busy
-    global score_submitted, leaderboard_entries
+    global score_submitted, leaderboard_entries, isolated_ball_count
     running = True
     while running:
         for event in pygame.event.get():
@@ -112,12 +119,18 @@ async def main():
                     else:
                         if len(pin) < PIN_LENGTH and event.unicode.isdigit():
                             pin += event.unicode
+            elif event.type == pygame.KEYUP and logged_in:
+                cursor.on_key_up(event.key)
             elif event.type == pygame.KEYDOWN and logged_in:
+                cursor.on_key_down(event.key)
                 if level_transition and event.key == pygame.K_SPACE:
                     # Space starts the next level: a new ball, a clean field,
-                    # cursor back at the start point, lives and level timer reset
+                    # cursor back at the start point, lives and level timer reset.
+                    # Any ball turned blue from being isolated goes back to red.
+                    for ball in balls:
+                        ball.image = default_ball_image
                     balls.append(
-                        Ball(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, player_speed, load_ball_image(BALL_IMAGE_PATH))
+                        Ball(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, player_speed, default_ball_image)
                     )
                     OBSTACLES[:] = make_initial_obstacles()
                     cursor.x, cursor.y = 0, SCREEN_HEIGHT // 2
@@ -131,8 +144,8 @@ async def main():
                     # Restart with the same player, no need to log in again:
                     # field, balls, lives, level and score all start over
                     balls[:] = [
-                        Ball(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, player_speed, load_ball_image(path))
-                        for path in BALL_IMAGE_PATHS
+                        Ball(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, player_speed, default_ball_image)
+                        for _ in BALL_IMAGE_PATHS
                     ]
                     OBSTACLES[:] = make_initial_obstacles()
                     cursor.x, cursor.y = 0, SCREEN_HEIGHT // 2
@@ -144,6 +157,7 @@ async def main():
                     level = 1
                     game_over = False
                     score_submitted = False
+                    isolated_ball_count = 0
                 elif event.key == pygame.K_SPACE and not game_over:
                     paused = not paused
 
@@ -159,9 +173,9 @@ async def main():
                 game_over = True
 
             if not game_over:
-                # Cursor control via arrow keys
-                keys = pygame.key.get_pressed()
-                cursor.handle_input(keys)
+                # Cursor control via arrow keys (see on_key_down/on_key_up above)
+                cursor.move()
+                cursor.stick_to_walls(OBSTACLES, CURSOR_WALL_SNAP_DISTANCE, CURSOR_WALL_LEAVE_DELAY_FRAMES)
 
                 # The cursor trails a line when it leaves the frame/a rectangle,
                 # and when the line touches the frame or a rectangle again, we
@@ -190,6 +204,25 @@ async def main():
                             OBSTACLES.extend(new_obstacles)
                             cursor.drawing = False
                             cursor.trail = []
+
+                            # A ball walled off from every other ball turns blue
+                            # and rewards the player: bonus points, and the level
+                            # timer (and with it the ball speed ramp) resets.
+                            # Skip balls that are already blue - a ball stays
+                            # isolated for the rest of the level (walls never
+                            # come down), so without this check every later
+                            # capture would reward the same ball again
+                            if len(balls) > 1:
+                                isolated_balls = [
+                                    group[0] for group in find_ball_groups(OBSTACLES, balls)
+                                    if len(group) == 1 and group[0].image is not blue_ball_image
+                                ]
+                                if isolated_balls:
+                                    for isolated_ball in isolated_balls:
+                                        isolated_ball.image = blue_ball_image
+                                    isolated_ball_count += len(isolated_balls)
+                                    banked_score += ISOLATION_BONUS_SCORE * len(isolated_balls)
+                                    elapsed_frames = 0
 
                             # Once the threshold is reached, points for the
                             # completed level go into the banked total and the
@@ -247,7 +280,7 @@ async def main():
             final_percent = get_captured_percent(OBSTACLES)
             final_score = banked_score + calculate_score(final_percent, len(balls))
             try:
-                await net.submit_score(LEADERBOARD_BASE_URL, username, pin, final_score, level)
+                await net.submit_score(LEADERBOARD_BASE_URL, username, pin, final_score, level, isolated_ball_count)
                 result = await net.fetch_leaderboard(LEADERBOARD_BASE_URL, LEADERBOARD_LIMIT)
                 if result.get("ok"):
                     leaderboard_entries = result.get("entries", [])
@@ -371,7 +404,7 @@ async def main():
             line_y += best_label.get_height() + PANEL_LINE_GAP
 
             for entry in leaderboard_entries:
-                entry_text = f"{entry['username']}: {entry['score']}"
+                entry_text = f"{entry['username']}: {entry['score']} (Lv{entry['level']}, {entry['balls_isolated']} balls)"
                 entry_surface = score_font.render(entry_text, True, TEXT_COLOR)
                 screen.blit(entry_surface, (panel_x, line_y))
                 line_y += entry_surface.get_height() + PANEL_LINE_GAP // 2

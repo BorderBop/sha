@@ -58,6 +58,12 @@ BALL_IMAGE_PATH = "pics/redball.png"
 # be given different paths)
 BALL_IMAGE_PATHS = [BALL_IMAGE_PATH] * BALL_COUNT
 
+# A ball walled off from all the other balls turns blue and rewards the
+# player: bonus points, and the level timer (and with it the ball speed
+# ramp) resets back to the start
+BLUE_BALL_IMAGE_PATH = "pics/blueball.png"
+ISOLATION_BONUS_SCORE = 1000
+
 # Percent of captured territory at which the game moves to the next level
 LEVEL_UP_PERCENT = 75
 
@@ -79,6 +85,19 @@ CURSOR_ANIMATION_PATHS = ["pics/star.png", "pics/star2.png", "pics/star3.png"]
 CURSOR_IMAGE_SIZE = (16, 16)
 CURSOR_SPEED = 4
 CURSOR_FRAME_DELAY = 8  # game frames between switching images (~130ms at 60 fps)
+
+# If a second arrow key is pressed while one is already held, the cursor
+# keeps moving along the first key's direction - this debounce is how many
+# frames a newly-leading key must stay held before it actually takes over,
+# so brief overlaps between two keys don't produce a diagonal trail step
+CURSOR_INPUT_DEBOUNCE_FRAMES = 3
+
+# Once within this many pixels of a wall (obstacle/frame), the cursor snaps
+# flush onto it, making it easy to hug the border precisely. Moving away
+# from a wall it's stuck to is held for CURSOR_WALL_LEAVE_DELAY_FRAMES
+# frames before it's actually allowed, to avoid accidentally peeling off
+CURSOR_WALL_SNAP_DISTANCE = 3
+CURSOR_WALL_LEAVE_DELAY_FRAMES = 5
 
 TRAIL_LINE_WIDTH = 3
 

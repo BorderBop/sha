@@ -18,10 +18,13 @@ async def login(base_url, username, pin):
     return json.loads(text)
 
 
-async def submit_score(base_url, username, pin, score, level):
+async def submit_score(base_url, username, pin, score, level, balls_isolated):
     text = await _handler.get(
         f"{base_url}/submit_score",
-        params={"username": username, "pin": pin, "score": score, "level": level},
+        params={
+            "username": username, "pin": pin, "score": score,
+            "level": level, "balls_isolated": balls_isolated,
+        },
     )
     return json.loads(text)
 

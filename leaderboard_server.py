@@ -17,8 +17,14 @@ def get_connection():
     conn.execute(
         "CREATE TABLE IF NOT EXISTS scores ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, score INTEGER, "
-        "level INTEGER, achieved_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+        "level INTEGER, balls_isolated INTEGER DEFAULT 0, "
+        "achieved_at TEXT DEFAULT CURRENT_TIMESTAMP)"
     )
+    try:
+        # Lightweight migration for databases created before this column existed
+        conn.execute("ALTER TABLE scores ADD COLUMN balls_isolated INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     return conn
 
 
@@ -82,6 +88,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 score = int(params.get("score", ["0"])[0])
                 level = int(params.get("level", ["0"])[0])
+                balls_isolated = int(params.get("balls_isolated", ["0"])[0])
             except ValueError:
                 self.send_json({"ok": False, "error": "invalid_input"}, 400)
                 return
@@ -96,8 +103,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             conn.execute(
-                "INSERT INTO scores (username, score, level) VALUES (?, ?, ?)",
-                (username, score, level),
+                "INSERT INTO scores (username, score, level, balls_isolated) VALUES (?, ?, ?, ?)",
+                (username, score, level, balls_isolated),
             )
             conn.commit()
             conn.close()
@@ -112,12 +119,19 @@ class Handler(BaseHTTPRequestHandler):
 
             conn = get_connection()
             rows = conn.execute(
-                "SELECT username, MAX(score) AS best, MAX(level) AS lvl "
-                "FROM scores GROUP BY username ORDER BY best DESC LIMIT ?",
+                "SELECT s.username, s.score, s.level, s.balls_isolated "
+                "FROM scores s "
+                "INNER JOIN (SELECT username, MAX(score) AS best_score FROM scores GROUP BY username) best "
+                "ON s.username = best.username AND s.score = best.best_score "
+                "GROUP BY s.username "
+                "ORDER BY s.score DESC LIMIT ?",
                 (limit,),
             ).fetchall()
             conn.close()
-            entries = [{"username": r[0], "score": r[1], "level": r[2]} for r in rows]
+            entries = [
+                {"username": r[0], "score": r[1], "level": r[2], "balls_isolated": r[3]}
+                for r in rows
+            ]
             self.send_json({"ok": True, "entries": entries})
             return
 

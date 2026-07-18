@@ -105,6 +105,40 @@ def merge_cells_to_rects(cells):
     return rects
 
 
+def find_ball_groups(obstacles, balls):
+    # Groups balls by which connected region of open (non-obstacle) space
+    # they're in - balls in the same group can still reach each other,
+    # balls in different groups have been fully walled off from one another
+    blocked = build_blocked_grid(obstacles)
+    component_of_cell = {}
+    next_label = 0
+
+    def flood_fill(start_cell, label):
+        queue = deque([start_cell])
+        component_of_cell[start_cell] = label
+        while queue:
+            col, row = queue.popleft()
+            for dcol, drow in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ncol, nrow = col + dcol, row + drow
+                cell = (ncol, nrow)
+                if 0 <= ncol < GRID_COLS and 0 <= nrow < GRID_ROWS \
+                        and not blocked[nrow][ncol] and cell not in component_of_cell:
+                    component_of_cell[cell] = label
+                    queue.append(cell)
+
+    groups_by_label = {}
+    for ball in balls:
+        col = max(0, min(GRID_COLS - 1, int(ball.x) // GRID_CELL))
+        row = max(0, min(GRID_ROWS - 1, int(ball.y) // GRID_CELL))
+        cell = (col, row)
+        if cell not in component_of_cell:
+            flood_fill(cell, next_label)
+            next_label += 1
+        groups_by_label.setdefault(component_of_cell[cell], []).append(ball)
+
+    return list(groups_by_label.values())
+
+
 def capture_enclosed_areas(trail_points, obstacles, balls):
     obstacle_grid = build_blocked_grid(obstacles)
     wall_grid = [row[:] for row in obstacle_grid]
