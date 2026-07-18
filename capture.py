@@ -48,11 +48,11 @@ def mark_trail_blocked(blocked, trail_points):
 
 
 def find_enclosed_cells(wall_grid, obstacle_grid, ball_cells):
-    # wall_grid (препятствия + линия) используется, чтобы найти, куда шарики
-    # могут добраться. obstacle_grid (только реальные препятствия) - чтобы
-    # не создавать повторно уже закрашенные клетки. Клетки, заблокированные
-    # только линией (ещё не ставшей препятствием), должны попасть в захват -
-    # иначе вдоль бывшей линии останется незакрашенная щель.
+    # wall_grid (obstacles + trail line) is used to find where the balls can
+    # reach. obstacle_grid (real obstacles only) is used so we don't create
+    # obstacles over already-painted cells again. Cells blocked only by the
+    # trail (not yet a real obstacle) must be included in the capture -
+    # otherwise a gap is left unpainted along the former trail line.
     reachable = [[False] * GRID_COLS for _ in range(GRID_ROWS)]
     queue = deque()
 
@@ -86,12 +86,12 @@ def merge_cells_to_rects(cells):
         if (col, row) in consumed:
             continue
 
-        # Горизонтальный разбег вправо
+        # Horizontal run to the right
         run_end = col
         while (run_end, row) in cells and (run_end, row) not in consumed:
             run_end += 1
 
-        # Тянем эту полосу вниз, пока снизу повторяется тот же разбег
+        # Extend this strip downward while the same run repeats below
         height = 1
         while all((c, row + height) in cells and (c, row + height) not in consumed for c in range(col, run_end)):
             height += 1

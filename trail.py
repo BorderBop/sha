@@ -12,7 +12,7 @@ def is_touching_obstacles(rect, obstacles):
 
 
 def get_leave_point(x, y, obstacles, tolerance):
-    # Ищем ближайший прямоугольник/рамку, от которого курсор только что оторвался
+    # Find the nearest rectangle/frame the cursor just broke away from
     best_rect = None
     best_dist = tolerance
     for obstacle in obstacles:
@@ -27,9 +27,9 @@ def get_leave_point(x, y, obstacles, tolerance):
     if best_rect is None:
         return x, y
 
-    # Прижимаем точку к границе найденного прямоугольника (по каждой оси
-    # отдельно) - работает и для боковых точек, и для углов, всегда даёт
-    # точку ровно на границе, без зазора
+    # Clamp the point to the found rectangle's border (independently on each
+    # axis) - works for points on a side as well as corners, and always
+    # gives a point exactly on the border, with no gap
     snapped_x = min(max(x, best_rect.left), best_rect.right)
     snapped_y = min(max(y, best_rect.top), best_rect.bottom)
     return snapped_x, snapped_y

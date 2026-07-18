@@ -15,8 +15,8 @@ class Obstacle:
 
 
 def make_initial_obstacles():
-    # Только рамка поля, без захваченной территории - используется и при
-    # старте игры, и при сбросе поля на новом уровне
+    # Just the field frame, no captured territory - used both when the
+    # game starts and when the field resets for a new level
     return [
         Obstacle(0, 0, FRAME_WIDTH, SCREEN_HEIGHT, FRAME_COLOR, is_frame=True),
         Obstacle(0, 0, SCREEN_WIDTH, FRAME_WIDTH, FRAME_COLOR, is_frame=True),
@@ -25,5 +25,5 @@ def make_initial_obstacles():
     ]
 
 
-# Прямоугольники-препятствия: координаты, размер и цвет задаются параметрами
+# Obstacle rectangles: coordinates, size and color are given as parameters
 OBSTACLES = make_initial_obstacles()

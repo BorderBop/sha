@@ -2,7 +2,7 @@ import pygame
 
 pygame.init()
 
-# Настройки экрана
+# Screen settings
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 900
 FRAME_WIDTH = 5
@@ -11,13 +11,13 @@ FRAME_COLOR = (50, 200, 100)
 LINE_COLOR = (255, 250, 205)
 TEXT_COLOR = (255, 255, 255)
 
-# Информационная панель справа от игрового поля, на всю высоту окна
+# Info panel to the right of the play field, full window height
 PANEL_WIDTH = 260
 PANEL_COLOR = (30, 35, 50)
 PANEL_PADDING = 16
 PANEL_LINE_GAP = 10
 
-# Прогрессбар "сколько осталось захватить до конца уровня"
+# Progress bar "how much is left to capture before the level ends"
 PROGRESS_BAR_HEIGHT = 18
 PROGRESS_BAR_BG_COLOR = (60, 65, 80)
 PROGRESS_BAR_COLOR = (220, 50, 50)
@@ -27,8 +27,8 @@ WINDOW_WIDTH = SCREEN_WIDTH + PANEL_WIDTH
 screen = pygame.display.set_mode((WINDOW_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("sha game")
 
-# Font(None, ...) грузит встроенный в pygame шрифт - работает одинаково
-# и нативно, и в браузере (там системных шрифтов может не быть)
+# Font(None, ...) loads pygame's built-in font - works the same natively
+# and in the browser (system fonts may not be available there)
 score_font = pygame.font.Font(None, 28)
 game_over_font = pygame.font.Font(None, 64)
 clock = pygame.time.Clock()
@@ -36,48 +36,60 @@ clock = pygame.time.Clock()
 STARTING_LIVES = 3
 LIFE_ICON_GAP = 6
 
-# Очки за захват территории: за процент, за скорость (штраф за секунды)
-# и за сложность (бонус за количество шариков в игре)
+# Points for capturing territory: for percent captured and for difficulty
+# (bonus per ball in play)
 POINTS_PER_PERCENT = 100
-TIME_PENALTY_PER_SECOND = 2
 BALL_BONUS_PER_BALL = 0.5
 
 PLAY_FIELD_AREA = (SCREEN_WIDTH - 2 * FRAME_WIDTH) * (SCREEN_HEIGHT - FRAME_WIDTH - BOTTOM_FRAME_WIDTH)
 
-# Сетка для поиска замкнутых линией областей (в т.ч. когда линия идёт
-# от одного прямоугольника/рамки до другого, не образуя петлю сама по себе)
+# Grid for finding areas enclosed by the line (including when the line runs
+# from one rectangle/frame to another without forming a loop by itself)
 GRID_CELL = 5
 GRID_COLS = SCREEN_WIDTH // GRID_CELL
 GRID_ROWS = SCREEN_HEIGHT // GRID_CELL
 
-# Игра начинается с одного шарика - на каждом новом уровне добавляется ещё один
+# The game starts with one ball - each new level adds one more
 BALL_COUNT = 1
 BALL_IMAGE_SIZE = (16, 16)
 BALL_IMAGE_PATH = "pics/redball.png"
 
-# Картинка для каждого шарика (по умолчанию у всех одна и та же,
-# но можно указать разные пути для разных шариков)
+# Image for each ball (by default all the same, but different balls can
+# be given different paths)
 BALL_IMAGE_PATHS = [BALL_IMAGE_PATH] * BALL_COUNT
 
-# Процент захваченной территории, при котором игра переходит на новый уровень
+# Percent of captured territory at which the game moves to the next level
 LEVEL_UP_PERCENT = 75
+
+# Level timer: level N gets (LEVEL_TIME_BASE_MINUTES + N - 1) minutes to
+# capture - level 1 gets 2 minutes, level 2 gets 3 minutes, etc. Run out
+# of time - Game Over
+LEVEL_TIME_BASE_MINUTES = 2
+
+# Ball speed ramps up linearly over the course of a level: at the start of
+# the level it's BALL_SPEED_MIN_FACTOR times the base speed (player_speed),
+# by the time the level's timer runs out it's BALL_SPEED_MAX_FACTOR times
+BALL_SPEED_MIN_FACTOR = 0.5
+BALL_SPEED_MAX_FACTOR = 2.0
 
 player_speed = 10
 
-CURSOR_IMAGE_PATH = "pics/star.png"
+# Cursor "spins" - animation frames cycle one after another
+CURSOR_ANIMATION_PATHS = ["pics/star.png", "pics/star2.png", "pics/star3.png"]
 CURSOR_IMAGE_SIZE = (16, 16)
 CURSOR_SPEED = 4
+CURSOR_FRAME_DELAY = 8  # game frames between switching images (~130ms at 60 fps)
 
 TRAIL_LINE_WIDTH = 3
 
-# Насколько далеко от стены курсор ещё считается "касающимся" в момент отрыва
-# или замыкания следа (см. is_touching_obstacles) - ровно на эту величину
-# нужно "довести" концы следа, чтобы не было зазора. Не используется больше
-# нигде, поэтому близко нарисованные, но не соприкасающиеся прямоугольники
-# друг к другу не притягиваются.
+# How far from a wall the cursor still counts as "touching" it at the
+# moment it leaves or closes the trail (see is_touching_obstacles) - the
+# ends of the trail get snapped to exactly this distance so there's no
+# gap. Not used anywhere else, so rectangles drawn close together but not
+# actually touching don't get pulled together.
 SNAP_TOLERANCE = 20
 
-# Таблица рекордов: адрес сервера и ограничения на экране логина
+# Leaderboard: server address and limits for the login screen
 LEADERBOARD_BASE_URL = "http://localhost:8765"
 USERNAME_MAX_LEN = 12
 PIN_LENGTH = 4

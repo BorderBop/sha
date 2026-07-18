@@ -15,20 +15,20 @@ def resolve_ball_collision(a, b):
 
     nx, ny = dx / dist, dy / dist
 
-    # Раздвигаем шарики, чтобы они не "слипались"
+    # Push the balls apart so they don't "stick" together
     overlap = min_dist - dist
     a.x -= nx * overlap / 2
     a.y -= ny * overlap / 2
     b.x += nx * overlap / 2
     b.y += ny * overlap / 2
 
-    # Упругое столкновение шариков одинаковой массы: меняем скорости вдоль нормали
+    # Elastic collision between equal-mass balls: swap velocities along the normal
     rel_vx = b.vx - a.vx
     rel_vy = b.vy - a.vy
     vel_along_normal = rel_vx * nx + rel_vy * ny
 
     if vel_along_normal > 0:
-        return  # шарики уже разлетаются
+        return  # balls are already separating
 
     a.vx += vel_along_normal * nx
     a.vy += vel_along_normal * ny
@@ -51,7 +51,7 @@ def resolve_ball_obstacle_collision(ball, obstacle):
         dist = math.sqrt(dist_sq)
         nx, ny = dx / dist, dy / dist
     else:
-        # Центр шарика оказался внутри прямоугольника — выталкиваем по ближайшей стороне
+        # The ball's center ended up inside the rectangle - push it out via the nearest side
         overlap_left = ball.x - rect.left
         overlap_right = rect.right - ball.x
         overlap_top = ball.y - rect.top

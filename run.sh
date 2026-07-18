@@ -1,8 +1,8 @@
 #!/bin/bash
-# Поднимает оба сервера разработки одной командой:
-# - leaderboard_server.py (таблица рекордов, порт 8765)
-# - pygbag main.py (сборка и раздача игры в браузере, порт 8000)
-# Ctrl+C останавливает оба.
+# Starts both dev servers with a single command:
+# - leaderboard_server.py (leaderboard, port 8765)
+# - pygbag main.py (builds and serves the game in the browser, port 8000)
+# Ctrl+C stops both.
 
 cd "$(dirname "$0")"
 

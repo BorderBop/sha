@@ -1,9 +1,9 @@
-# Этот блок нужно ДОБАВИТЬ в существующий системный /etc/caddy/Caddyfile
-# на сервере (не запускается отдельным контейнером - там уже есть свой Caddy,
-# держащий порты 80/443). После добавления: systemctl reload caddy
+# This block needs to be ADDED to the existing system /etc/caddy/Caddyfile
+# on the server (not run as a separate container - there's already a Caddy
+# there holding ports 80/443). After adding it: systemctl reload caddy
 #
-# Путь в `root` ниже предполагает, что репозиторий склонирован в /opt/sha -
-# поправьте, если клонировали в другое место.
+# The `root` path below assumes the repo was cloned into /opt/sha - adjust
+# it if you cloned it somewhere else.
 
 games.glamkit.ai {
 	handle /api/* {

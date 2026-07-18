@@ -4,13 +4,24 @@ from config import SCREEN_WIDTH, SCREEN_HEIGHT
 
 
 class Cursor:
-    def __init__(self, x, y, image, speed):
+    def __init__(self, x, y, images, speed, frame_delay):
         self.x = float(x)
         self.y = float(y)
-        self.image = image
+        self.images = images
+        self.frame_index = 0
+        self.frame_timer = 0
+        self.frame_delay = frame_delay
+        self.image = images[0]
         self.speed = speed
         self.drawing = False
         self.trail = []
+
+    def update_animation(self):
+        self.frame_timer += 1
+        if self.frame_timer >= self.frame_delay:
+            self.frame_timer = 0
+            self.frame_index = (self.frame_index + 1) % len(self.images)
+            self.image = self.images[self.frame_index]
 
     def handle_input(self, keys):
         if keys[pygame.K_LEFT]:

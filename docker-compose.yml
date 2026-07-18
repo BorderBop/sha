@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile.leaderboard
     ports:
-      # только на localhost - наружу отдаёт уже существующий системный Caddy
-      # на этом сервере, который проксирует /api/* сюда (см. Caddyfile)
+      # localhost only - the existing system Caddy on this server handles
+      # the public side and proxies /api/* here (see Caddyfile)
       - "127.0.0.1:8765:8765"
     volumes:
       - leaderboard_data:/data

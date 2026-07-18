@@ -36,3 +36,12 @@ class Ball:
         rect = self.image.get_rect()
         rect.center = (round(self.x), round(self.y))
         return rect
+
+    def set_speed(self, speed):
+        # Changes the speed magnitude while preserving the current direction
+        magnitude = math.hypot(self.vx, self.vy)
+        if magnitude == 0:
+            return
+        scale = speed / magnitude
+        self.vx *= scale
+        self.vy *= scale

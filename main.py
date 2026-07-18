@@ -1,5 +1,5 @@
 import sys
-import asyncio # Для совместимости с твоим веб-форматом
+import asyncio # for web compatibility (pygbag)
 
 import pygame
 
@@ -8,8 +8,9 @@ from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
     LINE_COLOR, TEXT_COLOR, TRAIL_LINE_WIDTH, SNAP_TOLERANCE,
     BALL_IMAGE_PATHS, BALL_IMAGE_PATH, player_speed,
-    CURSOR_IMAGE_PATH, CURSOR_IMAGE_SIZE, CURSOR_SPEED,
+    CURSOR_ANIMATION_PATHS, CURSOR_IMAGE_SIZE, CURSOR_SPEED, CURSOR_FRAME_DELAY,
     STARTING_LIVES, LIFE_ICON_GAP, LEVEL_UP_PERCENT,
+    LEVEL_TIME_BASE_MINUTES, BALL_SPEED_MIN_FACTOR, BALL_SPEED_MAX_FACTOR,
     PANEL_WIDTH, PANEL_COLOR, PANEL_PADDING, PANEL_LINE_GAP,
     PROGRESS_BAR_HEIGHT, PROGRESS_BAR_BG_COLOR, PROGRESS_BAR_COLOR,
     LEADERBOARD_BASE_URL, USERNAME_MAX_LEN, PIN_LENGTH, LEADERBOARD_LIMIT,
@@ -32,8 +33,9 @@ balls = [
 cursor = Cursor(
     0,
     SCREEN_HEIGHT // 2,
-    load_image(CURSOR_IMAGE_PATH, CURSOR_IMAGE_SIZE),
+    [load_image(path, CURSOR_IMAGE_SIZE) for path in CURSOR_ANIMATION_PATHS],
     CURSOR_SPEED,
+    CURSOR_FRAME_DELAY,
 )
 
 lives = STARTING_LIVES
@@ -45,8 +47,8 @@ level_transition = False
 level_up_gain = 0
 paused = False
 
-# Экран логина - на нативном запуске сети нет (см. net.py), поэтому сразу
-# считаем вошедшими под гостевым именем и пропускаем экран целиком
+# Login screen - there's no networking on a native run (see net.py), so we
+# log in right away as a guest and skip the screen entirely
 logged_in = not net.IS_BROWSER
 username = "" if net.IS_BROWSER else "Guest"
 pin = ""
@@ -58,7 +60,7 @@ score_submitted = False
 leaderboard_entries = []
 
 
-# Главный асинхронный цикл (подходит и для ПК, и для веба через pygbag)
+# Main async loop (works both on desktop and on the web via pygbag)
 async def main():
     global lives, game_over, elapsed_frames, banked_score, level, level_transition, level_up_gain, paused
     global logged_in, username, pin, active_field, login_status, login_busy
@@ -112,8 +114,8 @@ async def main():
                             pin += event.unicode
             elif event.type == pygame.KEYDOWN and logged_in:
                 if level_transition and event.key == pygame.K_SPACE:
-                    # Пробел запускает следующий уровень: новый шарик, чистое
-                    # поле, курсор в стартовой точке, жизни и таймер уровня заново
+                    # Space starts the next level: a new ball, a clean field,
+                    # cursor back at the start point, lives and level timer reset
                     balls.append(
                         Ball(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, player_speed, load_ball_image(BALL_IMAGE_PATH))
                     )
@@ -126,8 +128,8 @@ async def main():
                     level += 1
                     level_transition = False
                 elif game_over and event.key == pygame.K_SPACE:
-                    # Рестарт с тем же игроком, без повторного логина: поле,
-                    # шарики, жизни, уровень и очки начинаются заново
+                    # Restart with the same player, no need to log in again:
+                    # field, balls, lives, level and score all start over
                     balls[:] = [
                         Ball(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, player_speed, load_ball_image(path))
                         for path in BALL_IMAGE_PATHS
@@ -145,86 +147,105 @@ async def main():
                 elif event.key == pygame.K_SPACE and not game_over:
                     paused = not paused
 
+        # Level timer in frames - needed both for the time-up check and for
+        # the panel display, so it's computed unconditionally every frame
+        level_time_limit = (LEVEL_TIME_BASE_MINUTES + level - 1) * 60 * 60
+
         if logged_in and not game_over and not level_transition and not paused:
             elapsed_frames += 1
 
-            # Управление курсором стрелками клавиатуры
-            keys = pygame.key.get_pressed()
-            cursor.handle_input(keys)
+            if elapsed_frames >= level_time_limit:
+                # Level time is up - the game ends immediately
+                game_over = True
 
-            # Курсор тянет за собой линию, когда отрывается от рамки/прямоугольника,
-            # а когда линия снова упирается в рамку или прямоугольник - закрашиваем
-            # охваченную область и добавляем её в список препятствий
-            touching = is_touching_obstacles(cursor.get_rect(), OBSTACLES)
-            if not cursor.drawing:
-                if not touching:
-                    cursor.drawing = True
-                    start_x, start_y = get_leave_point(cursor.x, cursor.y, OBSTACLES, SNAP_TOLERANCE)
-                    cursor.trail = [(start_x, start_y)]
-            else:
-                if touching:
-                    end_x, end_y = get_leave_point(cursor.x, cursor.y, OBSTACLES, SNAP_TOLERANCE)
-                    closing_trail = cursor.trail + [(end_x, end_y)]
-                    if any(ball_touches_trail(ball, closing_trail) for ball in balls):
-                        # Шарик оказался прямо на замыкающем отрезке - если всё равно
-                        # закрасить область, он гарантированно окажется внутри неё
+            if not game_over:
+                # Cursor control via arrow keys
+                keys = pygame.key.get_pressed()
+                cursor.handle_input(keys)
+
+                # The cursor trails a line when it leaves the frame/a rectangle,
+                # and when the line touches the frame or a rectangle again, we
+                # paint the enclosed area and add it to the obstacle list
+                touching = is_touching_obstacles(cursor.get_rect(), OBSTACLES)
+                if not cursor.drawing:
+                    if not touching:
+                        cursor.drawing = True
+                        start_x, start_y = get_leave_point(cursor.x, cursor.y, OBSTACLES, SNAP_TOLERANCE)
+                        cursor.trail = [(start_x, start_y)]
+                else:
+                    if touching:
+                        end_x, end_y = get_leave_point(cursor.x, cursor.y, OBSTACLES, SNAP_TOLERANCE)
+                        closing_trail = cursor.trail + [(end_x, end_y)]
+                        if any(ball_touches_trail(ball, closing_trail) for ball in balls):
+                            # A ball is right on the closing segment - painting the
+                            # area now would guarantee trapping it inside
+                            cursor.x, cursor.y = cursor.trail[0]
+                            cursor.drawing = False
+                            cursor.trail = []
+                            lives -= 1
+                            if lives <= 0:
+                                game_over = True
+                        else:
+                            new_obstacles = capture_enclosed_areas(closing_trail, OBSTACLES, balls)
+                            OBSTACLES.extend(new_obstacles)
+                            cursor.drawing = False
+                            cursor.trail = []
+
+                            # Once the threshold is reached, points for the
+                            # completed level go into the banked total and the
+                            # game pauses with a message - the actual transition
+                            # (new ball, clean field, etc.) happens on the next
+                            # keypress, see the event handling above
+                            percent = get_captured_percent(OBSTACLES)
+                            if percent >= LEVEL_UP_PERCENT:
+                                level_up_gain = calculate_score(percent, len(balls))
+                                banked_score += level_up_gain
+                                level_transition = True
+                    else:
+                        cursor.trail.append((cursor.x, cursor.y))
+
+                # Ball speed ramps up linearly over the level's time budget -
+                # from half the base speed at the start to double by the time
+                # the timer runs out
+                level_progress = min(1, elapsed_frames / level_time_limit)
+                ball_speed = player_speed * (
+                    BALL_SPEED_MIN_FACTOR + (BALL_SPEED_MAX_FACTOR - BALL_SPEED_MIN_FACTOR) * level_progress
+                )
+                for ball in balls:
+                    ball.set_speed(ball_speed)
+
+                # Move the balls and bounce them off the walls
+                for ball in balls:
+                    ball.update()
+
+                # Bounce the balls off each other
+                for i in range(len(balls)):
+                    for j in range(i + 1, len(balls)):
+                        resolve_ball_collision(balls[i], balls[j])
+
+                # Bounce the balls off the obstacle rectangles
+                for ball in balls:
+                    for obstacle in OBSTACLES:
+                        resolve_ball_obstacle_collision(ball, obstacle)
+
+                # If a ball touches the not-yet-painted line, it breaks and the
+                # cursor snaps back to the point where it started drawing
+                if cursor.drawing:
+                    trail_points = cursor.trail + [(cursor.x, cursor.y)]
+                    if any(ball_touches_trail(ball, trail_points) for ball in balls):
                         cursor.x, cursor.y = cursor.trail[0]
                         cursor.drawing = False
                         cursor.trail = []
                         lives -= 1
                         if lives <= 0:
                             game_over = True
-                    else:
-                        new_obstacles = capture_enclosed_areas(closing_trail, OBSTACLES, balls)
-                        OBSTACLES.extend(new_obstacles)
-                        cursor.drawing = False
-                        cursor.trail = []
 
-                        # При достижении порога очки за пройденный уровень уходят в
-                        # несгораемую сумму, и игра встаёт на паузу с сообщением -
-                        # сам переход (новый шарик, чистое поле и т.д.) происходит
-                        # по нажатию любой клавиши, см. обработку событий выше
-                        percent = get_captured_percent(OBSTACLES)
-                        if percent >= LEVEL_UP_PERCENT:
-                            elapsed_seconds = elapsed_frames / 60
-                            level_up_gain = calculate_score(percent, elapsed_seconds, len(balls))
-                            banked_score += level_up_gain
-                            level_transition = True
-                else:
-                    cursor.trail.append((cursor.x, cursor.y))
-
-            # Двигаем шарики и отталкиваем их от стенок
-            for ball in balls:
-                ball.update()
-
-            # Отталкиваем шарики друг от друга
-            for i in range(len(balls)):
-                for j in range(i + 1, len(balls)):
-                    resolve_ball_collision(balls[i], balls[j])
-
-            # Отталкиваем шарики от прямоугольников-препятствий
-            for ball in balls:
-                for obstacle in OBSTACLES:
-                    resolve_ball_obstacle_collision(ball, obstacle)
-
-            # Если шарик задел ещё не закрашенную линию - она обрывается,
-            # а курсор возвращается в точку, откуда начал её тянуть
-            if cursor.drawing:
-                trail_points = cursor.trail + [(cursor.x, cursor.y)]
-                if any(ball_touches_trail(ball, trail_points) for ball in balls):
-                    cursor.x, cursor.y = cursor.trail[0]
-                    cursor.drawing = False
-                    cursor.trail = []
-                    lives -= 1
-                    if lives <= 0:
-                        game_over = True
-
-        # По Game Over один раз отправляем итоговый счёт на сервер и подтягиваем
-        # свежую таблицу рекордов - только в браузере, где сеть вообще доступна
+        # On Game Over, submit the final score to the server once and pull a
+        # fresh leaderboard - only in the browser, where networking exists at all
         if game_over and not score_submitted and net.IS_BROWSER:
             score_submitted = True
             final_percent = get_captured_percent(OBSTACLES)
-            final_score = banked_score + calculate_score(final_percent, elapsed_frames / 60, len(balls))
+            final_score = banked_score + calculate_score(final_percent, len(balls))
             try:
                 await net.submit_score(LEADERBOARD_BASE_URL, username, pin, final_score, level)
                 result = await net.fetch_leaderboard(LEADERBOARD_BASE_URL, LEADERBOARD_LIMIT)
@@ -233,11 +254,11 @@ async def main():
             except Exception:
                 pass
 
-        # Отрисовка
-        screen.fill((40, 50, 70))  # Очищаем экран фоновым цветом
+        # Rendering
+        screen.fill((40, 50, 70))  # clear the screen with the background color
 
         if not logged_in:
-            # Экран логина: имя + 4-значный PIN, ничего из игры пока не рисуем
+            # Login screen: name + 4-digit PIN, nothing from the game is drawn yet
             title_text = game_over_font.render("ENTER YOUR NAME", True, TEXT_COLOR)
             screen.blit(
                 title_text,
@@ -279,6 +300,8 @@ async def main():
             clock.tick(60)
             continue
 
+        cursor.update_animation()
+
         for obstacle in OBSTACLES:
             pygame.draw.rect(screen, obstacle.color, obstacle.rect)
 
@@ -291,16 +314,15 @@ async def main():
         screen.blit(cursor.image, cursor.get_rect())
 
         percent = get_captured_percent(OBSTACLES)
-        elapsed_seconds = elapsed_frames / 60
         if level_transition:
-            # Очки пройденного уровня уже зачислены в banked_score - поле и шарики
-            # ещё не сброшены (только визуально видны такими), пересчитывать их
-            # заново текущий процент/время не нужно, иначе уровень посчитается дважды
+            # Points for the completed level are already in banked_score - the
+            # field and balls haven't been reset yet (they just look that way),
+            # so recomputing the current percent would double-count the level
             score = banked_score
         else:
-            score = banked_score + calculate_score(percent, elapsed_seconds, len(balls))
+            score = banked_score + calculate_score(percent, len(balls))
 
-        # Информационная панель справа от игрового поля, на всю высоту окна
+        # Info panel to the right of the play field, full window height
         panel_rect = pygame.Rect(SCREEN_WIDTH, 0, PANEL_WIDTH, SCREEN_HEIGHT)
         pygame.draw.rect(screen, PANEL_COLOR, panel_rect)
 
@@ -311,11 +333,16 @@ async def main():
         screen.blit(level_line, (panel_x, line_y))
         line_y += level_line.get_height() + PANEL_LINE_GAP
 
+        remaining_seconds = max(0, level_time_limit - elapsed_frames) // 60
+        timer_line = score_font.render(f"Time left: {remaining_seconds // 60}:{remaining_seconds % 60:02d}", True, TEXT_COLOR)
+        screen.blit(timer_line, (panel_x, line_y))
+        line_y += timer_line.get_height() + PANEL_LINE_GAP
+
         captured_line = score_font.render(f"Captured: {percent:.1f}%", True, TEXT_COLOR)
         screen.blit(captured_line, (panel_x, line_y))
         line_y += captured_line.get_height() + PANEL_LINE_GAP
 
-        # Прогрессбар - сколько ещё нужно захватить территории до конца уровня
+        # Progress bar - how much territory is still left to capture before the level ends
         bar_width = PANEL_WIDTH - 2 * PANEL_PADDING
         bar_rect = pygame.Rect(panel_x, line_y, bar_width, PROGRESS_BAR_HEIGHT)
         pygame.draw.rect(screen, PROGRESS_BAR_BG_COLOR, bar_rect)

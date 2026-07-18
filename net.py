@@ -1,10 +1,10 @@
 import sys
 import json
 
-# aio.fetch существует только внутри скомпилированного pygbag-рантайма в
-# браузере - сам его импорт запускает фоновый event loop и ломает обычный
-# asyncio.run() при нативном запуске (python3 main.py), поэтому подключаем
-# его только когда реально работаем в браузере
+# aio.fetch only exists inside the compiled pygbag runtime in the browser -
+# just importing it starts a background event loop and breaks a normal
+# asyncio.run() when running natively (python3 main.py), so we only import
+# it when actually running in the browser
 IS_BROWSER = sys.platform == "emscripten"
 
 if IS_BROWSER:
