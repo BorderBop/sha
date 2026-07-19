@@ -43,12 +43,17 @@ BACKGROUND_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg")
 
 def load_random_background(directory, size):
     # Picks a random photo from `directory` and scales/crops it to `size`.
-    # Returns None if the folder is missing or has no images in it, so
-    # callers can fall back to a flat color fill
+    # Returns None if the folder is missing/empty, or if the picked file
+    # fails to load for any reason (e.g. a format the browser's decoder
+    # doesn't support) - callers fall back to a flat color fill. This must
+    # never raise: it runs at module import time, before anything is drawn,
+    # so an uncaught exception here would crash the whole game to a black
+    # screen instead of just skipping the background photo.
     try:
         filenames = [name for name in os.listdir(directory) if name.lower().endswith(BACKGROUND_IMAGE_EXTENSIONS)]
-    except OSError:
+        if not filenames:
+            return None
+        return load_cover_image(os.path.join(directory, random.choice(filenames)), size)
+    except Exception as e:
+        print(f"load_random_background: could not load a background photo, falling back to flat color: {e}")
         return None
-    if not filenames:
-        return None
-    return load_cover_image(os.path.join(directory, random.choice(filenames)), size)
