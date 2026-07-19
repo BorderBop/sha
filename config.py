@@ -3,8 +3,12 @@ import pygame
 pygame.init()
 
 # Screen settings
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 900
+# Must both be exact multiples of GRID_CELL (below) - otherwise the grid's
+# floor division leaves a few leftover pixels at the right/bottom edge that
+# the capture grid can never cover, showing up as a gap between the frame
+# and captured territory there
+SCREEN_WIDTH = 1197
+SCREEN_HEIGHT = 903
 FRAME_WIDTH = 7  # must match GRID_CELL below, or a gap appears between the frame and captured territory
 BOTTOM_FRAME_WIDTH = FRAME_WIDTH
 FRAME_COLOR = (50, 200, 100)
