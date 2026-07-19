@@ -12,12 +12,6 @@ SCREEN_HEIGHT = 903
 FRAME_WIDTH = 7  # must match GRID_CELL below, or a gap appears between the frame and captured territory
 BOTTOM_FRAME_WIDTH = FRAME_WIDTH
 FRAME_COLOR = (50, 200, 100)
-
-# Each side of the outer field frame is tiled with its own directional sprite
-FRAME_LEFT_IMAGE_PATH = "pics/verleft.png"
-FRAME_TOP_IMAGE_PATH = "pics/horup.png"
-FRAME_BOTTOM_IMAGE_PATH = "pics/hordown.png"
-FRAME_RIGHT_IMAGE_PATH = "pics/vertrigth.png"
 LINE_COLOR = (255, 250, 205)
 TEXT_COLOR = (255, 255, 255)
 
@@ -112,11 +106,13 @@ CURSOR_INPUT_DEBOUNCE_FRAMES = 3
 CURSOR_WALL_SNAP_DISTANCE = 3
 CURSOR_WALL_LEAVE_DELAY_FRAMES = 5
 
-# Captured territory gets a tiled wall border around its edges instead of a
-# plain flat rectangle - horizontal tiles run along the top/bottom edges,
-# vertical tiles along the left/right edges, both WALL_THICKNESS px thick
-HORIZONTAL_WALL_IMAGE_PATH = "pics/horizontwall.png"
-VERTICAL_WALL_IMAGE_PATH = "pics/verticalwall.png"
+# Both the outer field frame and captured territory get a tiled wall border
+# around their edges instead of a plain flat rectangle, each side using its
+# own directional sprite, all WALL_THICKNESS px thick
+BORDER_LEFT_IMAGE_PATH = "pics/verleft.png"
+BORDER_TOP_IMAGE_PATH = "pics/horup.png"
+BORDER_BOTTOM_IMAGE_PATH = "pics/hordown.png"
+BORDER_RIGHT_IMAGE_PATH = "pics/vertrigth.png"
 WALL_THICKNESS = 7
 
 TRAIL_LINE_WIDTH = 3
