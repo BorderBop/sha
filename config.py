@@ -12,6 +12,12 @@ SCREEN_HEIGHT = 903
 FRAME_WIDTH = 7  # must match GRID_CELL below, or a gap appears between the frame and captured territory
 BOTTOM_FRAME_WIDTH = FRAME_WIDTH
 FRAME_COLOR = (50, 200, 100)
+
+# Each side of the outer field frame is tiled with its own directional sprite
+FRAME_LEFT_IMAGE_PATH = "pics/verleft.png"
+FRAME_TOP_IMAGE_PATH = "pics/horup.png"
+FRAME_BOTTOM_IMAGE_PATH = "pics/hordown.png"
+FRAME_RIGHT_IMAGE_PATH = "pics/vertrigth.png"
 LINE_COLOR = (255, 250, 205)
 TEXT_COLOR = (255, 255, 255)
 

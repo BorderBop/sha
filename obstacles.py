@@ -6,22 +6,23 @@ from config import SCREEN_WIDTH, SCREEN_HEIGHT, FRAME_WIDTH, BOTTOM_FRAME_WIDTH,
 class Obstacle:
     _next_id = 0
 
-    def __init__(self, x, y, width, height, color, is_frame=False):
+    def __init__(self, x, y, width, height, color, is_frame=False, edge=None):
         self.id = Obstacle._next_id
         Obstacle._next_id += 1
         self.rect = pygame.Rect(x, y, width, height)
         self.color = color
         self.is_frame = is_frame
+        self.edge = edge  # for frame obstacles: 'left' / 'top' / 'bottom' / 'right'
 
 
 def make_initial_obstacles():
     # Just the field frame, no captured territory - used both when the
     # game starts and when the field resets for a new level
     return [
-        Obstacle(0, 0, FRAME_WIDTH, SCREEN_HEIGHT, FRAME_COLOR, is_frame=True),
-        Obstacle(0, 0, SCREEN_WIDTH, FRAME_WIDTH, FRAME_COLOR, is_frame=True),
-        Obstacle(0, SCREEN_HEIGHT - BOTTOM_FRAME_WIDTH, SCREEN_WIDTH, BOTTOM_FRAME_WIDTH, FRAME_COLOR, is_frame=True),
-        Obstacle(SCREEN_WIDTH - FRAME_WIDTH, 0, FRAME_WIDTH, SCREEN_HEIGHT, FRAME_COLOR, is_frame=True),
+        Obstacle(0, 0, FRAME_WIDTH, SCREEN_HEIGHT, FRAME_COLOR, is_frame=True, edge="left"),
+        Obstacle(0, 0, SCREEN_WIDTH, FRAME_WIDTH, FRAME_COLOR, is_frame=True, edge="top"),
+        Obstacle(0, SCREEN_HEIGHT - BOTTOM_FRAME_WIDTH, SCREEN_WIDTH, BOTTOM_FRAME_WIDTH, FRAME_COLOR, is_frame=True, edge="bottom"),
+        Obstacle(SCREEN_WIDTH - FRAME_WIDTH, 0, FRAME_WIDTH, SCREEN_HEIGHT, FRAME_COLOR, is_frame=True, edge="right"),
     ]
 
 

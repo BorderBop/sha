@@ -17,6 +17,7 @@ from config import (
     LEADERBOARD_BASE_URL, USERNAME_MAX_LEN, PIN_LENGTH, LEADERBOARD_LIMIT,
     BLUE_BALL_IMAGE_PATH, ISOLATION_BONUS_SCORE,
     HORIZONTAL_WALL_IMAGE_PATH, VERTICAL_WALL_IMAGE_PATH, WALL_THICKNESS,
+    FRAME_LEFT_IMAGE_PATH, FRAME_TOP_IMAGE_PATH, FRAME_BOTTOM_IMAGE_PATH, FRAME_RIGHT_IMAGE_PATH,
 )
 from images import load_image, load_ball_image, load_image_native
 from obstacles import OBSTACLES, make_initial_obstacles
@@ -40,6 +41,18 @@ vertical_wall_image = load_image_native(VERTICAL_WALL_IMAGE_PATH)
 # A thickness x thickness crop used to patch inner (concave) corners, where
 # neither the horizontal nor the vertical wall run reaches on its own
 corner_wall_image = horizontal_wall_image.subsurface(pygame.Rect(0, 0, WALL_THICKNESS, WALL_THICKNESS))
+
+# Each side of the outer field frame gets its own directional sprite
+frame_left_image = load_image_native(FRAME_LEFT_IMAGE_PATH)
+frame_top_image = load_image_native(FRAME_TOP_IMAGE_PATH)
+frame_bottom_image = load_image_native(FRAME_BOTTOM_IMAGE_PATH)
+frame_right_image = load_image_native(FRAME_RIGHT_IMAGE_PATH)
+FRAME_EDGE_IMAGES = {
+    "left": (frame_left_image, False),
+    "top": (frame_top_image, True),
+    "bottom": (frame_bottom_image, True),
+    "right": (frame_right_image, False),
+}
 
 cursor = Cursor(
     0,
@@ -111,6 +124,29 @@ def find_open_runs(count, is_open_fn):
     return runs
 
 
+def blit_tiled_run(surface, run_rect, tile_image, horizontal):
+    # Tiles tile_image edge-to-edge along run_rect's length (horizontal:
+    # left-to-right, vertical: top-to-bottom). The clip rect cuts off the
+    # last tile cleanly if run_rect's length isn't an exact multiple of the
+    # tile size, so no gap or overflow either way. Caller is responsible for
+    # saving/restoring the surface's previous clip.
+    surface.set_clip(run_rect)
+    tile_size = tile_image.get_width() if horizontal else tile_image.get_height()
+    pos = run_rect.left if horizontal else run_rect.top
+    end = pos + (run_rect.width if horizontal else run_rect.height)
+    while pos < end:
+        dest = (pos, run_rect.top) if horizontal else (run_rect.left, pos)
+        surface.blit(tile_image, dest)
+        pos += tile_size
+
+
+def draw_frame_edge(surface, rect, fill_color, tile_image, horizontal):
+    pygame.draw.rect(surface, fill_color, rect)
+    previous_clip = surface.get_clip()
+    blit_tiled_run(surface, rect, tile_image, horizontal)
+    surface.set_clip(previous_clip)
+
+
 def draw_captured_obstacle(surface, rect, fill_color, h_wall_image, v_wall_image, corner_tile, thickness, blocked_grid):
     # Flat fill for the interior, then a tiled wall border - but only along
     # the stretches of each edge that face open space. An edge touching
@@ -134,24 +170,14 @@ def draw_captured_obstacle(surface, rect, fill_color, h_wall_image, v_wall_image
 
     previous_clip = surface.get_clip()
 
-    def draw_run(run_rect, tile_image, horizontal):
-        surface.set_clip(run_rect)
-        tile_size = tile_image.get_width() if horizontal else tile_image.get_height()
-        pos = run_rect.left if horizontal else run_rect.top
-        end = pos + (run_rect.width if horizontal else run_rect.height)
-        while pos < end:
-            dest = (pos, run_rect.top) if horizontal else (run_rect.left, pos)
-            surface.blit(tile_image, dest)
-            pos += tile_size
-
     for start, length in find_open_runs(width_cells, lambda c: is_open(col_start + c, row_start - 1)):
-        draw_run(pygame.Rect(rect.left + start * thickness, rect.top, length * thickness, thickness), h_wall_image, True)
+        blit_tiled_run(surface, pygame.Rect(rect.left + start * thickness, rect.top, length * thickness, thickness), h_wall_image, True)
     for start, length in find_open_runs(width_cells, lambda c: is_open(col_start + c, row_start + height_cells)):
-        draw_run(pygame.Rect(rect.left + start * thickness, rect.bottom - thickness, length * thickness, thickness), h_wall_image, True)
+        blit_tiled_run(surface, pygame.Rect(rect.left + start * thickness, rect.bottom - thickness, length * thickness, thickness), h_wall_image, True)
     for start, length in find_open_runs(height_cells, lambda r: is_open(col_start - 1, row_start + r)):
-        draw_run(pygame.Rect(rect.left, rect.top + start * thickness, thickness, length * thickness), v_wall_image, False)
+        blit_tiled_run(surface, pygame.Rect(rect.left, rect.top + start * thickness, thickness, length * thickness), v_wall_image, False)
     for start, length in find_open_runs(height_cells, lambda r: is_open(col_start + width_cells, row_start + r)):
-        draw_run(pygame.Rect(rect.right - thickness, rect.top + start * thickness, thickness, length * thickness), v_wall_image, False)
+        blit_tiled_run(surface, pygame.Rect(rect.right - thickness, rect.top + start * thickness, thickness, length * thickness), v_wall_image, False)
 
     surface.set_clip(previous_clip)
 
@@ -459,7 +485,8 @@ async def main():
         blocked_grid = get_blocked_grid_cached(OBSTACLES)
         for obstacle in OBSTACLES:
             if obstacle.is_frame:
-                pygame.draw.rect(screen, obstacle.color, obstacle.rect)
+                tile_image, horizontal = FRAME_EDGE_IMAGES[obstacle.edge]
+                draw_frame_edge(screen, obstacle.rect, obstacle.color, tile_image, horizontal)
             else:
                 draw_captured_obstacle(
                     screen, obstacle.rect, obstacle.color,
