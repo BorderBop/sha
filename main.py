@@ -67,6 +67,27 @@ leaderboard_entries = []
 isolated_ball_count = 0
 
 
+def blit_line_parts(surface, x, y, parts, font, color):
+    # Draws a line made of a mix of text strings and icon surfaces, one
+    # after another, and returns the line's height so the caller can move
+    # on to the next line
+    cursor_x = x
+    line_height = font.get_height()
+    for part in parts:
+        if isinstance(part, str):
+            if part:
+                text_surface = font.render(part, True, color)
+                surface.blit(text_surface, (cursor_x, y))
+                cursor_x += text_surface.get_width()
+                line_height = max(line_height, text_surface.get_height())
+        else:
+            icon_y = y + (font.get_height() - part.get_height()) // 2
+            surface.blit(part, (cursor_x, icon_y))
+            cursor_x += part.get_width() + 4
+            line_height = max(line_height, part.get_height())
+    return line_height
+
+
 # Main async loop (works both on desktop and on the web via pygbag)
 async def main():
     global lives, game_over, elapsed_frames, banked_score, level, level_transition, level_up_gain, paused
@@ -227,7 +248,7 @@ async def main():
                             # Once the threshold is reached, points for the
                             # completed level go into the banked total and the
                             # game pauses with a message - the actual transition
-                            # (new ball, clean field, etc.) happens on the next
+                            # (new ball, clean field, etc.) happens on the  
                             # keypress, see the event handling above
                             percent = get_captured_percent(OBSTACLES)
                             if percent >= LEVEL_UP_PERCENT:
@@ -362,9 +383,17 @@ async def main():
         panel_x = SCREEN_WIDTH + PANEL_PADDING
         line_y = PANEL_PADDING
 
+        name_line = score_font.render(username, True, TEXT_COLOR)
+        screen.blit(name_line, (panel_x, line_y))
+        line_y += name_line.get_height() + PANEL_LINE_GAP
+
         level_line = score_font.render(f"Level: {level}", True, TEXT_COLOR)
         screen.blit(level_line, (panel_x, line_y))
         line_y += level_line.get_height() + PANEL_LINE_GAP
+
+        line_y += blit_line_parts(
+            screen, panel_x, line_y, [blue_ball_image, f" {isolated_ball_count}"], score_font, TEXT_COLOR
+        ) + PANEL_LINE_GAP
 
         remaining_seconds = max(0, level_time_limit - elapsed_frames) // 60
         timer_line = score_font.render(f"Time left: {remaining_seconds // 60}:{remaining_seconds % 60:02d}", True, TEXT_COLOR)
@@ -404,10 +433,13 @@ async def main():
             line_y += best_label.get_height() + PANEL_LINE_GAP
 
             for entry in leaderboard_entries:
-                entry_text = f"{entry['username']}: {entry['score']} (Lv{entry['level']}, {entry['balls_isolated']} balls)"
-                entry_surface = score_font.render(entry_text, True, TEXT_COLOR)
-                screen.blit(entry_surface, (panel_x, line_y))
-                line_y += entry_surface.get_height() + PANEL_LINE_GAP // 2
+                parts = [
+                    f"{entry['username']}: {entry['score']} (",
+                    default_ball_image, f"{entry['level']}, ",
+                    blue_ball_image, f"{entry['balls_isolated']})",
+                ]
+                entry_height = blit_line_parts(screen, panel_x, line_y, parts, score_font, TEXT_COLOR)
+                line_y += entry_height + PANEL_LINE_GAP // 2
 
         if paused:
             paused_text = game_over_font.render("PAUSED", True, TEXT_COLOR)
