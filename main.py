@@ -92,6 +92,56 @@ score_submitted = False
 leaderboard_entries = []
 isolated_ball_count = 0
 
+NAME_BOX_SIZE = (300, 44)
+PIN_BOX_SIZE = 54
+PIN_BOX_GAP = 12
+
+
+def login_layout():
+    # All geometry for the login screen in one place, computed from the
+    # actual font heights - so rows are spaced far enough apart to never
+    # overlap regardless of font metrics. Shared by both event handling
+    # (click hit-testing) and rendering, so they can never drift apart.
+    center_x = SCREEN_WIDTH // 2
+    y = SCREEN_HEIGHT // 2 - 190
+    label_height = score_font.get_height()
+
+    def advance(height, gap):
+        nonlocal y
+        top = y
+        y += height + gap
+        return top
+
+    title_top = advance(game_over_font.get_height(), 40)
+
+    name_label_top = advance(label_height, 4)
+    name_box = pygame.Rect(0, 0, *NAME_BOX_SIZE)
+    name_box.top = advance(NAME_BOX_SIZE[1], 30)
+    name_box.centerx = center_x
+
+    pin_label_top = advance(label_height, 4)
+    pin_row_width = 4 * PIN_BOX_SIZE + 3 * PIN_BOX_GAP
+    pin_row_left = center_x - pin_row_width // 2
+    pin_row_top = advance(PIN_BOX_SIZE, 30)
+    pin_boxes = [
+        pygame.Rect(pin_row_left + i * (PIN_BOX_SIZE + PIN_BOX_GAP), pin_row_top, PIN_BOX_SIZE, PIN_BOX_SIZE)
+        for i in range(PIN_LENGTH)
+    ]
+
+    status_top = advance(label_height, 10)
+    hint_top = advance(label_height, 0)
+
+    return {
+        "center_x": center_x,
+        "title_top": title_top,
+        "name_label_top": name_label_top,
+        "name_box": name_box,
+        "pin_label_top": pin_label_top,
+        "pin_boxes": pin_boxes,
+        "status_top": status_top,
+        "hint_top": hint_top,
+    }
+
 
 def blit_line_parts(surface, x, y, parts, font, color):
     # Draws a line made of a mix of text strings and icon surfaces, one
@@ -284,6 +334,12 @@ async def main():
                     else:
                         if len(pin) < PIN_LENGTH and event.unicode.isdigit():
                             pin += event.unicode
+            elif event.type == pygame.MOUSEBUTTONDOWN and not logged_in and event.button == 1:
+                layout = login_layout()
+                if layout["name_box"].collidepoint(event.pos):
+                    active_field = "username"
+                elif any(box.collidepoint(event.pos) for box in layout["pin_boxes"]):
+                    active_field = "pin"
             elif event.type == pygame.KEYUP and logged_in:
                 cursor.on_key_up(event.key)
             elif event.type == pygame.KEYDOWN and logged_in:
@@ -459,41 +515,34 @@ async def main():
 
         if not logged_in:
             # Login screen: name + 4-digit PIN, nothing from the game is drawn yet
+            layout = login_layout()
+            active_color = (255, 220, 80)
+
             title_text = game_over_font.render("ENTER YOUR NAME", True, TEXT_COLOR)
-            screen.blit(
-                title_text,
-                title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 150)),
-            )
+            screen.blit(title_text, title_text.get_rect(midtop=(layout["center_x"], layout["title_top"])))
 
-            box_width, box_height = 300, 40
-            username_box = pygame.Rect(0, 0, box_width, box_height)
-            username_box.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 60)
-            pin_box = pygame.Rect(0, 0, box_width, box_height)
-            pin_box.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+            name_box = layout["name_box"]
+            name_label = score_font.render("Name", True, TEXT_COLOR)
+            screen.blit(name_label, (name_box.left, layout["name_label_top"]))
+            pygame.draw.rect(screen, PANEL_COLOR, name_box)
+            pygame.draw.rect(screen, active_color if active_field == "username" else TEXT_COLOR, name_box, 2)
+            name_value = score_font.render(username, True, TEXT_COLOR)
+            screen.blit(name_value, (name_box.left + 8, name_box.centery - name_value.get_height() // 2))
 
-            for field_name, box, label, value in (
-                ("username", username_box, "Name", username),
-                ("pin", pin_box, "4-digit PIN", "*" * len(pin)),
-            ):
-                border_color = (255, 220, 80) if active_field == field_name else TEXT_COLOR
-                label_surface = score_font.render(label, True, TEXT_COLOR)
-                screen.blit(label_surface, (box.left, box.top - label_surface.get_height() - 4))
+            pin_label = score_font.render("4-digit PIN", True, TEXT_COLOR)
+            screen.blit(pin_label, (layout["pin_boxes"][0].left, layout["pin_label_top"]))
+            pin_border_color = active_color if active_field == "pin" else TEXT_COLOR
+            for i, box in enumerate(layout["pin_boxes"]):
                 pygame.draw.rect(screen, PANEL_COLOR, box)
-                pygame.draw.rect(screen, border_color, box, 2)
-                value_surface = score_font.render(value, True, TEXT_COLOR)
-                screen.blit(value_surface, (box.left + 8, box.centery - value_surface.get_height() // 2))
+                pygame.draw.rect(screen, pin_border_color, box, 2)
+                if i < len(pin):
+                    pygame.draw.circle(screen, TEXT_COLOR, box.center, 8)
 
             status_surface = score_font.render(login_status, True, TEXT_COLOR)
-            screen.blit(
-                status_surface,
-                status_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 60)),
-            )
+            screen.blit(status_surface, status_surface.get_rect(midtop=(layout["center_x"], layout["status_top"])))
 
-            hint_surface = score_font.render("TAB to switch field, ENTER to continue", True, TEXT_COLOR)
-            screen.blit(
-                hint_surface,
-                hint_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100)),
-            )
+            hint_surface = score_font.render("Click a field or press TAB to switch, ENTER to continue", True, TEXT_COLOR)
+            screen.blit(hint_surface, hint_surface.get_rect(midtop=(layout["center_x"], layout["hint_top"])))
 
             pygame.display.flip()
             await asyncio.sleep(0)
