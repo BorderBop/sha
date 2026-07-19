@@ -34,6 +34,7 @@ On top of that, a small pure-Python server (`leaderboard_server.py`, no framewor
 | `net.py` | client-side networking — the only place that uses pygbag's `aio.fetch` (browser-only) |
 | `leaderboard_server.py` | leaderboard server: HTTP + SQLite, no external dependencies |
 | `pics/` | sprites |
+| `pygbag_template.html` | pygbag's default `index.html` template, with one CSS fix: the canvas keeps its real aspect ratio and is letterboxed to fit the window instead of being stretched to fill it. Passed to every pygbag build via `--template` |
 
 ## Running locally (development)
 
@@ -71,7 +72,7 @@ It sets `LEADERBOARD_BASE_URL = "/api"` (a relative path - the browser resolves 
 
 Build the static client and bring up the leaderboard server container:
 ```bash
-python3 -m pygbag --build main.py
+python3 -m pygbag --build --template pygbag_template.html main.py
 docker compose up -d --build
 ```
 
@@ -88,7 +89,7 @@ cd /opt/sha
 git pull
 
 # if the client changed (main.py and other game modules)
-python3 -m pygbag --build main.py
+python3 -m pygbag --build --template pygbag_template.html main.py
 
 # if leaderboard_server.py changed
 docker compose up -d --build

@@ -17,7 +17,7 @@ python3 leaderboard_server.py &
 LEADERBOARD_PID=$!
 echo "leaderboard_server.py running (pid $LEADERBOARD_PID) on http://localhost:8765"
 
-python3 -m pygbag main.py &
+python3 -m pygbag --template pygbag_template.html main.py &
 PYGBAG_PID=$!
 echo "pygbag main.py running (pid $PYGBAG_PID) on http://localhost:8000"
 
