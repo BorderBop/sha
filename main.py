@@ -79,6 +79,11 @@ level_transition = False
 level_up_gain = 0
 paused = False
 
+# Frozen at the start of a fresh game (and reset on restart), showing the
+# controls hint instead of running the timer/balls, until the player's
+# first arrow key press
+awaiting_first_move = True
+
 # Login screen - there's no networking on a native run (see net.py), so we
 # log in right away as a guest and skip the screen entirely
 logged_in = not net.IS_BROWSER
@@ -287,6 +292,7 @@ def get_blocked_grid_cached(obstacles):
 # Main async loop (works both on desktop and on the web via pygbag)
 async def main():
     global lives, game_over, elapsed_frames, banked_score, level, level_transition, level_up_gain, paused, captured_background_image
+    global awaiting_first_move
     global logged_in, username, pin, active_field, login_status, login_busy
     global score_submitted, leaderboard_entries, isolated_ball_count
     running = True
@@ -346,6 +352,8 @@ async def main():
                 cursor.on_key_up(event.key)
             elif event.type == pygame.KEYDOWN and logged_in:
                 cursor.on_key_down(event.key)
+                if awaiting_first_move and event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN):
+                    awaiting_first_move = False
                 if level_transition and event.key == pygame.K_SPACE:
                     # Space starts the next level: a new ball, a clean field,
                     # cursor back at the start point, lives and level timer reset.
@@ -383,6 +391,7 @@ async def main():
                     game_over = False
                     score_submitted = False
                     isolated_ball_count = 0
+                    awaiting_first_move = True
                 elif event.key == pygame.K_SPACE and not game_over:
                     paused = not paused
 
@@ -390,7 +399,7 @@ async def main():
         # the panel display, so it's computed unconditionally every frame
         level_time_limit = (LEVEL_TIME_BASE_MINUTES + level - 1) * 60 * 60
 
-        if logged_in and not game_over and not level_transition and not paused:
+        if logged_in and not game_over and not level_transition and not paused and not awaiting_first_move:
             elapsed_frames += 1
 
             if elapsed_frames >= level_time_limit:
@@ -655,6 +664,13 @@ async def main():
             screen.blit(
                 paused_text,
                 paused_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)),
+            )
+
+        if awaiting_first_move and not game_over:
+            hint_title = score_font.render("Use the ARROW KEYS to move the cursor and draw", True, TEXT_COLOR)
+            screen.blit(
+                hint_title,
+                hint_title.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)),
             )
 
         if level_transition:
