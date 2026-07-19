@@ -4,12 +4,24 @@ import pygame
 
 from config import SCREEN_WIDTH, SCREEN_HEIGHT
 
-MOVE_KEYS = (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN)
+MOVE_KEYS = (
+    pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN,
+    pygame.K_a, pygame.K_d, pygame.K_w, pygame.K_s,
+    pygame.K_KP4, pygame.K_KP6, pygame.K_KP8, pygame.K_KP2,
+)
 KEY_DIRECTIONS = {
     pygame.K_LEFT: (-1, 0),
     pygame.K_RIGHT: (1, 0),
     pygame.K_UP: (0, -1),
     pygame.K_DOWN: (0, 1),
+    pygame.K_a: (-1, 0),
+    pygame.K_d: (1, 0),
+    pygame.K_w: (0, -1),
+    pygame.K_s: (0, 1),
+    pygame.K_KP4: (-1, 0),
+    pygame.K_KP6: (1, 0),
+    pygame.K_KP8: (0, -1),
+    pygame.K_KP2: (0, 1),
 }
 
 

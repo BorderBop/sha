@@ -23,7 +23,7 @@ from config import (
 from images import load_image, load_ball_image, load_image_native, load_random_background
 from obstacles import OBSTACLES, make_initial_obstacles
 from ball import Ball
-from cursor import Cursor
+from cursor import Cursor, MOVE_KEYS
 from physics import resolve_ball_collision, resolve_ball_obstacle_collision
 from trail import is_touching_obstacles, get_leave_point, ball_touches_trail
 from capture import capture_enclosed_areas, get_captured_percent, find_ball_groups, build_blocked_grid
@@ -352,7 +352,7 @@ async def main():
                 cursor.on_key_up(event.key)
             elif event.type == pygame.KEYDOWN and logged_in:
                 cursor.on_key_down(event.key)
-                if awaiting_first_move and event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN):
+                if awaiting_first_move and event.key in MOVE_KEYS:
                     awaiting_first_move = False
                 if level_transition and event.key == pygame.K_SPACE:
                     # Space starts the next level: a new ball, a clean field,
@@ -667,11 +667,16 @@ async def main():
             )
 
         if awaiting_first_move and not game_over:
-            hint_title = score_font.render("Use the ARROW KEYS to move the cursor and draw", True, TEXT_COLOR)
-            screen.blit(
-                hint_title,
-                hint_title.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)),
-            )
+            # The cursor starts at the left edge (0, SCREEN_HEIGHT // 2) - the
+            # hint sits right next to it instead of centered on screen
+            hint_lines = ["Move with ARROW KEYS,", "WASD, or NUMPAD 8-4-6-2"]
+            hint_x = 30
+            line_height = score_font.get_height()
+            hint_y = SCREEN_HEIGHT // 2 - (len(hint_lines) * line_height) // 2
+            for line in hint_lines:
+                line_surface = score_font.render(line, True, TEXT_COLOR)
+                screen.blit(line_surface, (hint_x, hint_y))
+                hint_y += line_height
 
         if level_transition:
             title_text = game_over_font.render(f"LEVEL {level} COMPLETE!", True, TEXT_COLOR)
