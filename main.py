@@ -18,8 +18,9 @@ from config import (
     BLUE_BALL_IMAGE_PATH, ISOLATION_BONUS_SCORE,
     WALL_THICKNESS,
     BORDER_LEFT_IMAGE_PATH, BORDER_TOP_IMAGE_PATH, BORDER_BOTTOM_IMAGE_PATH, BORDER_RIGHT_IMAGE_PATH,
+    BACKGROUND_PHOTOS_DIR,
 )
-from images import load_image, load_ball_image, load_image_native
+from images import load_image, load_ball_image, load_image_native, load_random_background
 from obstacles import OBSTACLES, make_initial_obstacles
 from ball import Ball
 from cursor import Cursor
@@ -54,6 +55,11 @@ CORNER_TILES = {
     "top": BORDER_IMAGES["top"].subsurface(pygame.Rect(0, 0, WALL_THICKNESS, WALL_THICKNESS)),
     "bottom": BORDER_IMAGES["bottom"].subsurface(pygame.Rect(0, 0, WALL_THICKNESS, WALL_THICKNESS)),
 }
+
+# A random photo from BACKGROUND_PHOTOS_DIR fills captured territory instead
+# of a flat color, re-picked at the start of every level - None (folder
+# empty/missing) falls back to the obstacle's flat fill_color
+captured_background_image = load_random_background(BACKGROUND_PHOTOS_DIR, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 cursor = Cursor(
     0,
@@ -148,14 +154,21 @@ def draw_frame_edge(surface, rect, fill_color, tile_image, horizontal):
     surface.set_clip(previous_clip)
 
 
-def draw_captured_obstacle(surface, rect, fill_color, border_images, corner_tiles, thickness, blocked_grid):
-    # Flat fill for the interior, then a tiled wall border - but only along
-    # the stretches of each edge that face open space. An edge touching
-    # another obstacle (another captured piece, or the frame) is left flat,
-    # so adjacent captured territory reads as one seamless shape with a
-    # border only on its true outer boundary. Each side uses its own
-    # directional sprite (border_images: 'left'/'top'/'bottom'/'right').
-    pygame.draw.rect(surface, fill_color, rect)
+def draw_captured_obstacle(surface, rect, fill_color, background_image, border_images, corner_tiles, thickness, blocked_grid):
+    # Interior fill, then a tiled wall border - but only along the stretches
+    # of each edge that face open space. An edge touching another obstacle
+    # (another captured piece, or the frame) is left flat, so adjacent
+    # captured territory reads as one seamless shape with a border only on
+    # its true outer boundary. Each side uses its own directional sprite
+    # (border_images: 'left'/'top'/'bottom'/'right').
+    # The interior itself is a slice of the shared background photo when one
+    # is set (background_image is sized to the whole field, so blitting the
+    # same rect from it lines up seamlessly across separate captured
+    # pieces), otherwise a flat fill_color.
+    if background_image is not None:
+        surface.blit(background_image, rect.topleft, area=rect)
+    else:
+        pygame.draw.rect(surface, fill_color, rect)
 
     grid_rows = len(blocked_grid)
     grid_cols = len(blocked_grid[0])
@@ -221,7 +234,7 @@ def get_blocked_grid_cached(obstacles):
 
 # Main async loop (works both on desktop and on the web via pygbag)
 async def main():
-    global lives, game_over, elapsed_frames, banked_score, level, level_transition, level_up_gain, paused
+    global lives, game_over, elapsed_frames, banked_score, level, level_transition, level_up_gain, paused, captured_background_image
     global logged_in, username, pin, active_field, login_status, login_busy
     global score_submitted, leaderboard_entries, isolated_ball_count
     running = True
@@ -285,6 +298,7 @@ async def main():
                         Ball(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, player_speed, default_ball_image)
                     )
                     OBSTACLES[:] = make_initial_obstacles()
+                    captured_background_image = load_random_background(BACKGROUND_PHOTOS_DIR, (SCREEN_WIDTH, SCREEN_HEIGHT))
                     cursor.x, cursor.y = 0, SCREEN_HEIGHT // 2
                     cursor.drawing = False
                     cursor.trail = []
@@ -300,6 +314,7 @@ async def main():
                         for _ in BALL_IMAGE_PATHS
                     ]
                     OBSTACLES[:] = make_initial_obstacles()
+                    captured_background_image = load_random_background(BACKGROUND_PHOTOS_DIR, (SCREEN_WIDTH, SCREEN_HEIGHT))
                     cursor.x, cursor.y = 0, SCREEN_HEIGHT // 2
                     cursor.drawing = False
                     cursor.trail = []
@@ -495,7 +510,7 @@ async def main():
             else:
                 draw_captured_obstacle(
                     screen, obstacle.rect, obstacle.color,
-                    BORDER_IMAGES, CORNER_TILES, WALL_THICKNESS,
+                    captured_background_image, BORDER_IMAGES, CORNER_TILES, WALL_THICKNESS,
                     blocked_grid,
                 )
 

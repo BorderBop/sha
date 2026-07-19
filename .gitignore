@@ -8,6 +8,9 @@ build/
 # local leaderboard database - each environment has its own
 leaderboard.db
 
+# captured-territory background photos - local content, not code
+pics/backgrounds/
+
 # per-environment config overrides (e.g. production LEADERBOARD_BASE_URL) -
 # see local_settings.example.py
 local_settings.py

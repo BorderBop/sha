@@ -115,6 +115,12 @@ BORDER_BOTTOM_IMAGE_PATH = "pics/hordown.png"
 BORDER_RIGHT_IMAGE_PATH = "pics/vertrigth.png"
 WALL_THICKNESS = 7
 
+# Captured territory's fill is a random photo from this folder instead of a
+# flat color, picked fresh each level - drop image files here yourself (not
+# tracked by git, see .gitignore). Empty/missing folder falls back to
+# FRAME_COLOR
+BACKGROUND_PHOTOS_DIR = "pics/backgrounds"
+
 TRAIL_LINE_WIDTH = 3
 
 # How far from a wall the cursor still counts as "touching" it at the
