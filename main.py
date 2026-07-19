@@ -103,7 +103,7 @@ def login_layout():
     # overlap regardless of font metrics. Shared by both event handling
     # (click hit-testing) and rendering, so they can never drift apart.
     center_x = SCREEN_WIDTH // 2
-    y = SCREEN_HEIGHT // 2 - 190
+    y = SCREEN_HEIGHT // 2 - 220
     label_height = score_font.get_height()
 
     def advance(height, gap):
@@ -112,7 +112,8 @@ def login_layout():
         y += height + gap
         return top
 
-    title_top = advance(game_over_font.get_height(), 40)
+    title_top = advance(game_over_font.get_height(), 16)
+    tagline_top = advance(label_height, 40)
 
     name_label_top = advance(label_height, 4)
     name_box = pygame.Rect(0, 0, *NAME_BOX_SIZE)
@@ -134,6 +135,7 @@ def login_layout():
     return {
         "center_x": center_x,
         "title_top": title_top,
+        "tagline_top": tagline_top,
         "name_label_top": name_label_top,
         "name_box": name_box,
         "pin_label_top": pin_label_top,
@@ -520,6 +522,9 @@ async def main():
 
             title_text = game_over_font.render("ENTER YOUR NAME", True, TEXT_COLOR)
             screen.blit(title_text, title_text.get_rect(midtop=(layout["center_x"], layout["title_top"])))
+
+            tagline_text = score_font.render("Draw lines, claim territory, dodge the bouncing chaos!", True, LINE_COLOR)
+            screen.blit(tagline_text, tagline_text.get_rect(midtop=(layout["center_x"], layout["tagline_top"])))
 
             name_box = layout["name_box"]
             name_label = score_font.render("Name", True, TEXT_COLOR)
