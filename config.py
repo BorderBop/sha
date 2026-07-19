@@ -113,3 +113,11 @@ LEADERBOARD_BASE_URL = "http://localhost:8765"
 USERNAME_MAX_LEN = 12
 PIN_LENGTH = 4
 LEADERBOARD_LIMIT = 6
+
+# Per-environment overrides (e.g. LEADERBOARD_BASE_URL = "/api" for the
+# production build) live in local_settings.py, which is gitignored - so a
+# deployed server's local settings never conflict with `git pull`
+try:
+    from local_settings import *  # noqa: F401,F403
+except ImportError:
+    pass

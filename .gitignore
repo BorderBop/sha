@@ -8,6 +8,10 @@ build/
 # local leaderboard database - each environment has its own
 leaderboard.db
 
+# per-environment config overrides (e.g. production LEADERBOARD_BASE_URL) -
+# see local_settings.example.py
+local_settings.py
+
 # editor/tooling
 .vscode/
 .claude/

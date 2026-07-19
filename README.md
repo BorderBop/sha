@@ -63,11 +63,11 @@ git clone https://github.com/BorderBop/sha.git
 cd sha
 ```
 
-For the production build, change in `config.py`:
-```python
-LEADERBOARD_BASE_URL = "/api"   # instead of "http://localhost:8765"
+Set up the production override (done once - this file is gitignored, so it survives every future `git pull` without conflicts):
+```bash
+cp local_settings.example.py local_settings.py
 ```
-(a relative path - the browser resolves it against the same domain the page was served from; for local development this line should stay `http://localhost:8765`, since there's no proxy in front of the leaderboard server there)
+It sets `LEADERBOARD_BASE_URL = "/api"` (a relative path - the browser resolves it against the same domain the page was served from). `config.py` imports `local_settings.py` at the end if present, so this overrides the `http://localhost:8765` default used for local development, where there's no proxy in front of the leaderboard server.
 
 Build the static client and bring up the leaderboard server container:
 ```bash
