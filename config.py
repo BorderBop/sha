@@ -44,8 +44,11 @@ BALL_BONUS_PER_BALL = 0.5
 PLAY_FIELD_AREA = (SCREEN_WIDTH - 2 * FRAME_WIDTH) * (SCREEN_HEIGHT - FRAME_WIDTH - BOTTOM_FRAME_WIDTH)
 
 # Grid for finding areas enclosed by the line (including when the line runs
-# from one rectangle/frame to another without forming a loop by itself)
-GRID_CELL = 5
+# from one rectangle/frame to another without forming a loop by itself).
+# 7px matches WALL_THICKNESS below, so every captured rectangle is always
+# a multiple of the wall tile thickness in both dimensions - never thinner
+# than a single tile, so the border always renders cleanly
+GRID_CELL = 7
 GRID_COLS = SCREEN_WIDTH // GRID_CELL
 GRID_ROWS = SCREEN_HEIGHT // GRID_CELL
 
@@ -98,6 +101,13 @@ CURSOR_INPUT_DEBOUNCE_FRAMES = 3
 # frames before it's actually allowed, to avoid accidentally peeling off
 CURSOR_WALL_SNAP_DISTANCE = 3
 CURSOR_WALL_LEAVE_DELAY_FRAMES = 5
+
+# Captured territory gets a tiled wall border around its edges instead of a
+# plain flat rectangle - horizontal tiles run along the top/bottom edges,
+# vertical tiles along the left/right edges, both WALL_THICKNESS px thick
+HORIZONTAL_WALL_IMAGE_PATH = "pics/horizontwall.png"
+VERTICAL_WALL_IMAGE_PATH = "pics/verticalwall.png"
+WALL_THICKNESS = 7
 
 TRAIL_LINE_WIDTH = 3
 

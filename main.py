@@ -16,8 +16,9 @@ from config import (
     PROGRESS_BAR_HEIGHT, PROGRESS_BAR_BG_COLOR, PROGRESS_BAR_COLOR,
     LEADERBOARD_BASE_URL, USERNAME_MAX_LEN, PIN_LENGTH, LEADERBOARD_LIMIT,
     BLUE_BALL_IMAGE_PATH, ISOLATION_BONUS_SCORE,
+    HORIZONTAL_WALL_IMAGE_PATH, VERTICAL_WALL_IMAGE_PATH, WALL_THICKNESS,
 )
-from images import load_image, load_ball_image
+from images import load_image, load_ball_image, load_image_native
 from obstacles import OBSTACLES, make_initial_obstacles
 from ball import Ball
 from cursor import Cursor
@@ -34,6 +35,8 @@ balls = [
 
 default_ball_image = load_ball_image(BALL_IMAGE_PATH)
 blue_ball_image = load_ball_image(BLUE_BALL_IMAGE_PATH)
+horizontal_wall_image = load_image_native(HORIZONTAL_WALL_IMAGE_PATH)
+vertical_wall_image = load_image_native(VERTICAL_WALL_IMAGE_PATH)
 
 cursor = Cursor(
     0,
@@ -86,6 +89,32 @@ def blit_line_parts(surface, x, y, parts, font, color):
             cursor_x += part.get_width() + 4
             line_height = max(line_height, part.get_height())
     return line_height
+
+
+def draw_captured_obstacle(surface, rect, fill_color, h_wall_image, v_wall_image, thickness):
+    # Flat fill for the interior, then a tiled wall border along all four
+    # edges on top - GRID_CELL == thickness guarantees rect is always at
+    # least `thickness` px in both dimensions, so the border always fits
+    pygame.draw.rect(surface, fill_color, rect)
+
+    previous_clip = surface.get_clip()
+    surface.set_clip(rect)
+
+    h_tile_width = h_wall_image.get_width()
+    x = rect.left
+    while x < rect.right:
+        surface.blit(h_wall_image, (x, rect.top))
+        surface.blit(h_wall_image, (x, rect.bottom - thickness))
+        x += h_tile_width
+
+    v_tile_height = v_wall_image.get_height()
+    y = rect.top
+    while y < rect.bottom:
+        surface.blit(v_wall_image, (rect.left, y))
+        surface.blit(v_wall_image, (rect.right - thickness, y))
+        y += v_tile_height
+
+    surface.set_clip(previous_clip)
 
 
 # Main async loop (works both on desktop and on the web via pygbag)
@@ -357,7 +386,13 @@ async def main():
         cursor.update_animation()
 
         for obstacle in OBSTACLES:
-            pygame.draw.rect(screen, obstacle.color, obstacle.rect)
+            if obstacle.is_frame:
+                pygame.draw.rect(screen, obstacle.color, obstacle.rect)
+            else:
+                draw_captured_obstacle(
+                    screen, obstacle.rect, obstacle.color,
+                    horizontal_wall_image, vertical_wall_image, WALL_THICKNESS,
+                )
 
         if cursor.drawing and len(cursor.trail) >= 1:
             pygame.draw.lines(screen, LINE_COLOR, False, cursor.trail + [(cursor.x, cursor.y)], TRAIL_LINE_WIDTH)

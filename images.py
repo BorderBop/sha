@@ -12,3 +12,9 @@ def load_image(path, size):
 
 def load_ball_image(path, size=BALL_IMAGE_SIZE):
     return load_image(path, size)
+
+
+def load_image_native(path):
+    # Like load_image, but keeps the file's own size - for tile images that
+    # are already exactly the size they need to be drawn at
+    return pygame.image.load(path).convert_alpha()
