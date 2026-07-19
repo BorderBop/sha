@@ -5,7 +5,7 @@ pygame.init()
 # Screen settings
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 900
-FRAME_WIDTH = 5
+FRAME_WIDTH = 7  # must match GRID_CELL below, or a gap appears between the frame and captured territory
 BOTTOM_FRAME_WIDTH = FRAME_WIDTH
 FRAME_COLOR = (50, 200, 100)
 LINE_COLOR = (255, 250, 205)

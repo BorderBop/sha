@@ -24,7 +24,7 @@ from ball import Ball
 from cursor import Cursor
 from physics import resolve_ball_collision, resolve_ball_obstacle_collision
 from trail import is_touching_obstacles, get_leave_point, ball_touches_trail
-from capture import capture_enclosed_areas, get_captured_percent, find_ball_groups
+from capture import capture_enclosed_areas, get_captured_percent, find_ball_groups, build_blocked_grid
 from scoring import calculate_score
 import net
 
@@ -91,30 +91,80 @@ def blit_line_parts(surface, x, y, parts, font, color):
     return line_height
 
 
-def draw_captured_obstacle(surface, rect, fill_color, h_wall_image, v_wall_image, thickness):
-    # Flat fill for the interior, then a tiled wall border along all four
-    # edges on top - GRID_CELL == thickness guarantees rect is always at
-    # least `thickness` px in both dimensions, so the border always fits
+def find_open_runs(count, is_open_fn):
+    # Groups consecutive open cell offsets (0..count-1) into runs of
+    # (start_offset, length)
+    runs = []
+    run_start = None
+    for i in range(count):
+        if is_open_fn(i):
+            if run_start is None:
+                run_start = i
+        elif run_start is not None:
+            runs.append((run_start, i - run_start))
+            run_start = None
+    if run_start is not None:
+        runs.append((run_start, count - run_start))
+    return runs
+
+
+def draw_captured_obstacle(surface, rect, fill_color, h_wall_image, v_wall_image, thickness, blocked_grid):
+    # Flat fill for the interior, then a tiled wall border - but only along
+    # the stretches of each edge that face open space. An edge touching
+    # another obstacle (another captured piece, or the frame) is left flat,
+    # so adjacent captured territory reads as one seamless shape with a
+    # border only on its true outer boundary
     pygame.draw.rect(surface, fill_color, rect)
 
+    grid_rows = len(blocked_grid)
+    grid_cols = len(blocked_grid[0])
+
+    def is_open(col, row):
+        if 0 <= row < grid_rows and 0 <= col < grid_cols:
+            return not blocked_grid[row][col]
+        return True
+
+    col_start = rect.left // thickness
+    row_start = rect.top // thickness
+    width_cells = rect.width // thickness
+    height_cells = rect.height // thickness
+
     previous_clip = surface.get_clip()
-    surface.set_clip(rect)
 
-    h_tile_width = h_wall_image.get_width()
-    x = rect.left
-    while x < rect.right:
-        surface.blit(h_wall_image, (x, rect.top))
-        surface.blit(h_wall_image, (x, rect.bottom - thickness))
-        x += h_tile_width
+    def draw_run(run_rect, tile_image, horizontal):
+        surface.set_clip(run_rect)
+        tile_size = tile_image.get_width() if horizontal else tile_image.get_height()
+        pos = run_rect.left if horizontal else run_rect.top
+        end = pos + (run_rect.width if horizontal else run_rect.height)
+        while pos < end:
+            dest = (pos, run_rect.top) if horizontal else (run_rect.left, pos)
+            surface.blit(tile_image, dest)
+            pos += tile_size
 
-    v_tile_height = v_wall_image.get_height()
-    y = rect.top
-    while y < rect.bottom:
-        surface.blit(v_wall_image, (rect.left, y))
-        surface.blit(v_wall_image, (rect.right - thickness, y))
-        y += v_tile_height
+    for start, length in find_open_runs(width_cells, lambda c: is_open(col_start + c, row_start - 1)):
+        draw_run(pygame.Rect(rect.left + start * thickness, rect.top, length * thickness, thickness), h_wall_image, True)
+    for start, length in find_open_runs(width_cells, lambda c: is_open(col_start + c, row_start + height_cells)):
+        draw_run(pygame.Rect(rect.left + start * thickness, rect.bottom - thickness, length * thickness, thickness), h_wall_image, True)
+    for start, length in find_open_runs(height_cells, lambda r: is_open(col_start - 1, row_start + r)):
+        draw_run(pygame.Rect(rect.left, rect.top + start * thickness, thickness, length * thickness), v_wall_image, False)
+    for start, length in find_open_runs(height_cells, lambda r: is_open(col_start + width_cells, row_start + r)):
+        draw_run(pygame.Rect(rect.right - thickness, rect.top + start * thickness, thickness, length * thickness), v_wall_image, False)
 
     surface.set_clip(previous_clip)
+
+
+_blocked_grid_cache = None
+_blocked_grid_cache_count = -1
+
+
+def get_blocked_grid_cached(obstacles):
+    # OBSTACLES only ever grows (via .extend()), so its length is a cheap
+    # and reliable signal for "did anything change since last frame"
+    global _blocked_grid_cache, _blocked_grid_cache_count
+    if len(obstacles) != _blocked_grid_cache_count:
+        _blocked_grid_cache = build_blocked_grid(obstacles)
+        _blocked_grid_cache_count = len(obstacles)
+    return _blocked_grid_cache
 
 
 # Main async loop (works both on desktop and on the web via pygbag)
@@ -385,6 +435,7 @@ async def main():
 
         cursor.update_animation()
 
+        blocked_grid = get_blocked_grid_cached(OBSTACLES)
         for obstacle in OBSTACLES:
             if obstacle.is_frame:
                 pygame.draw.rect(screen, obstacle.color, obstacle.rect)
@@ -392,6 +443,7 @@ async def main():
                 draw_captured_obstacle(
                     screen, obstacle.rect, obstacle.color,
                     horizontal_wall_image, vertical_wall_image, WALL_THICKNESS,
+                    blocked_grid,
                 )
 
         if cursor.drawing and len(cursor.trail) >= 1:
