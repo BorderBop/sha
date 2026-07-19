@@ -99,6 +99,20 @@ docker compose up -d --build
 
 The leaderboard is stored in a named Docker volume (`leaderboard_data`) and **is not lost** on a regular update - the volume survives a container rebuild/restart. It's only wiped by an explicit `docker compose down -v`.
 
+### Replacing background photos
+
+Captured territory is filled with a random photo from `pics/backgrounds/` (see `BACKGROUND_PHOTOS_DIR` in `config.py`), re-picked every level. The couple of photos already in that folder are committed to git so a fresh clone/deploy has something to show, but `pics/backgrounds/*` is gitignored - so swapping or adding more photos is a direct file copy to the server, no commit needed:
+
+```bash
+# from your machine, in the project folder
+scp pics/backgrounds/*.jpg <user>@games.glamkit.ai:/opt/sha/pics/backgrounds/
+
+# rebuild the client so the new files are packed into the archive the browser downloads
+ssh <user>@games.glamkit.ai "cd /opt/sha && python3 -m pygbag --build --template pygbag_template.html main.py"
+```
+
+pygbag bundles every project file (including `pics/backgrounds/`) into a single archive at build time, so a plain file copy alone isn't picked up until that rebuild runs - it's just repacking what's already on disk, no Docker/Caddy restart needed. A hard refresh (Cmd+Shift+R) in the browser may be needed too, if it cached the old archive.
+
 Post-deploy check:
 ```bash
 curl https://games.glamkit.ai/api/ping
