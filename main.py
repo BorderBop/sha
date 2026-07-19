@@ -5,7 +5,7 @@ import pygame
 
 from config import (
     screen, score_font, game_over_font, clock,
-    SCREEN_WIDTH, SCREEN_HEIGHT,
+    SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_WIDTH,
     LINE_COLOR, TEXT_COLOR, TRAIL_LINE_WIDTH, SNAP_TOLERANCE,
     BALL_IMAGE_PATHS, BALL_IMAGE_PATH, player_speed,
     CURSOR_ANIMATION_PATHS, CURSOR_IMAGE_SIZE, CURSOR_SPEED, CURSOR_FRAME_DELAY,
@@ -18,9 +18,9 @@ from config import (
     BLUE_BALL_IMAGE_PATH, ISOLATION_BONUS_SCORE,
     WALL_THICKNESS,
     BORDER_LEFT_IMAGE_PATH, BORDER_TOP_IMAGE_PATH, BORDER_BOTTOM_IMAGE_PATH, BORDER_RIGHT_IMAGE_PATH,
-    BACKGROUND_PHOTOS_DIR,
+    BACKGROUND_PHOTOS_DIR, LOGIN_BACKGROUND_IMAGE_PATH,
 )
-from images import load_image, load_ball_image, load_image_native, load_random_background
+from images import load_image, load_ball_image, load_image_native, load_random_background, load_cover_image
 from obstacles import OBSTACLES, make_initial_obstacles
 from ball import Ball
 from cursor import Cursor, MOVE_KEYS
@@ -60,6 +60,16 @@ CORNER_TILES = {
 # of a flat color, re-picked at the start of every level - None (folder
 # empty/missing) falls back to the obstacle's flat fill_color
 captured_background_image = load_random_background(BACKGROUND_PHOTOS_DIR, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+try:
+    login_background_image = load_cover_image(LOGIN_BACKGROUND_IMAGE_PATH, (WINDOW_WIDTH, SCREEN_HEIGHT))
+except Exception as e:
+    print(f"login background image failed to load, falling back to flat color: {e}")
+    login_background_image = None
+
+# Darkens the login background photo so the white text stays readable over it
+login_background_scrim = pygame.Surface((WINDOW_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+login_background_scrim.fill((0, 0, 0, 140))
 
 cursor = Cursor(
     0,
@@ -526,6 +536,10 @@ async def main():
 
         if not logged_in:
             # Login screen: name + 4-digit PIN, nothing from the game is drawn yet
+            if login_background_image is not None:
+                screen.blit(login_background_image, (0, 0))
+                screen.blit(login_background_scrim, (0, 0))
+
             layout = login_layout()
             active_color = (255, 220, 80)
 

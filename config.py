@@ -120,6 +120,8 @@ WALL_THICKNESS = 7
 # FRAME_COLOR
 BACKGROUND_PHOTOS_DIR = "pics/backgrounds"
 
+LOGIN_BACKGROUND_IMAGE_PATH = "pics/rush.png"
+
 TRAIL_LINE_WIDTH = 3
 
 # How far from a wall the cursor still counts as "touching" it at the
