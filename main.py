@@ -37,6 +37,9 @@ default_ball_image = load_ball_image(BALL_IMAGE_PATH)
 blue_ball_image = load_ball_image(BLUE_BALL_IMAGE_PATH)
 horizontal_wall_image = load_image_native(HORIZONTAL_WALL_IMAGE_PATH)
 vertical_wall_image = load_image_native(VERTICAL_WALL_IMAGE_PATH)
+# A thickness x thickness crop used to patch inner (concave) corners, where
+# neither the horizontal nor the vertical wall run reaches on its own
+corner_wall_image = horizontal_wall_image.subsurface(pygame.Rect(0, 0, WALL_THICKNESS, WALL_THICKNESS))
 
 cursor = Cursor(
     0,
@@ -108,7 +111,7 @@ def find_open_runs(count, is_open_fn):
     return runs
 
 
-def draw_captured_obstacle(surface, rect, fill_color, h_wall_image, v_wall_image, thickness, blocked_grid):
+def draw_captured_obstacle(surface, rect, fill_color, h_wall_image, v_wall_image, corner_tile, thickness, blocked_grid):
     # Flat fill for the interior, then a tiled wall border - but only along
     # the stretches of each edge that face open space. An edge touching
     # another obstacle (another captured piece, or the frame) is left flat,
@@ -151,6 +154,24 @@ def draw_captured_obstacle(surface, rect, fill_color, h_wall_image, v_wall_image
         draw_run(pygame.Rect(rect.right - thickness, rect.top + start * thickness, thickness, length * thickness), v_wall_image, False)
 
     surface.set_clip(previous_clip)
+
+    # Inner (concave) corners: a cell whose two straight edges are each
+    # covered by a *different* neighboring obstacle, but which is still
+    # diagonally next to open space, gets missed by the edge runs above
+    # (neither run's straight check ever reaches it). Patch those cells
+    # individually so the border wraps all the way around without a notch.
+    boundary_cells = set()
+    for c in range(width_cells):
+        boundary_cells.add((col_start + c, row_start))
+        boundary_cells.add((col_start + c, row_start + height_cells - 1))
+    for r in range(height_cells):
+        boundary_cells.add((col_start, row_start + r))
+        boundary_cells.add((col_start + width_cells - 1, row_start + r))
+
+    for col, row in boundary_cells:
+        for dc, dr in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+            if is_open(col + dc, row + dr) and not is_open(col + dc, row) and not is_open(col, row + dr):
+                surface.blit(corner_tile, (col * thickness, row * thickness))
 
 
 _blocked_grid_cache = None
@@ -442,7 +463,7 @@ async def main():
             else:
                 draw_captured_obstacle(
                     screen, obstacle.rect, obstacle.color,
-                    horizontal_wall_image, vertical_wall_image, WALL_THICKNESS,
+                    horizontal_wall_image, vertical_wall_image, corner_wall_image, WALL_THICKNESS,
                     blocked_grid,
                 )
 
