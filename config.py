@@ -122,6 +122,10 @@ BACKGROUND_PHOTOS_DIR = "pics/backgrounds"
 
 LOGIN_BACKGROUND_IMAGE_PATH = "pics/rush.png"
 
+# Shown at the bottom of the side panel while paused or on Game Over, gone
+# as soon as play resumes
+PAUSE_IMAGE_PATH = "pics/jack.png"
+
 TRAIL_LINE_WIDTH = 3
 
 # How far from a wall the cursor still counts as "touching" it at the

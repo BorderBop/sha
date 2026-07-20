@@ -23,6 +23,15 @@ def load_image_native(path):
     return pygame.image.load(path).convert_alpha()
 
 
+def load_scaled_to_width(path, width):
+    # Like load_image, but scales to a given width while preserving the
+    # image's own aspect ratio, instead of stretching to an exact size
+    image = pygame.image.load(path).convert_alpha()
+    image_width, image_height = image.get_size()
+    height = round(width * image_height / image_width)
+    return pygame.transform.scale(image, (width, height))
+
+
 def load_cover_image(path, size):
     # Like load_image, but scales up just enough to *cover* the target size
     # (preserving aspect ratio) and crops the centered overflow, instead of

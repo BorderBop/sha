@@ -18,9 +18,11 @@ from config import (
     BLUE_BALL_IMAGE_PATH, ISOLATION_BONUS_SCORE,
     WALL_THICKNESS,
     BORDER_LEFT_IMAGE_PATH, BORDER_TOP_IMAGE_PATH, BORDER_BOTTOM_IMAGE_PATH, BORDER_RIGHT_IMAGE_PATH,
-    BACKGROUND_PHOTOS_DIR, LOGIN_BACKGROUND_IMAGE_PATH,
+    BACKGROUND_PHOTOS_DIR, LOGIN_BACKGROUND_IMAGE_PATH, PAUSE_IMAGE_PATH,
 )
-from images import load_image, load_ball_image, load_image_native, load_random_background, load_cover_image
+from images import (
+    load_image, load_ball_image, load_image_native, load_random_background, load_cover_image, load_scaled_to_width,
+)
 from obstacles import OBSTACLES, make_initial_obstacles
 from ball import Ball
 from cursor import Cursor, MOVE_KEYS
@@ -70,6 +72,12 @@ except Exception as e:
 # Darkens the login background photo so the white text stays readable over it
 login_background_scrim = pygame.Surface((WINDOW_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 login_background_scrim.fill((0, 0, 0, 140))
+
+try:
+    pause_image = load_scaled_to_width(PAUSE_IMAGE_PATH, PANEL_WIDTH - 2 * PANEL_PADDING)
+except Exception as e:
+    print(f"pause image failed to load: {e}")
+    pause_image = None
 
 cursor = Cursor(
     0,
@@ -672,6 +680,12 @@ async def main():
                 ]
                 entry_height = blit_line_parts(screen, panel_x, line_y, parts, score_font, TEXT_COLOR)
                 line_y += entry_height + PANEL_LINE_GAP // 2
+
+        if (paused or game_over) and pause_image is not None:
+            pause_image_rect = pause_image.get_rect()
+            pause_image_rect.centerx = panel_x + bar_width // 2
+            pause_image_rect.bottom = panel_rect.bottom - PANEL_PADDING
+            screen.blit(pause_image, pause_image_rect)
 
         if paused:
             paused_text = game_over_font.render("PAUSED", True, TEXT_COLOR)
