@@ -2,6 +2,8 @@
 
 A territory-capture arcade game (Qix-style): the cursor drags a line from the frame/already-captured blocks, cut-off areas get painted in, and balls bouncing around the field try to touch the unfinished line and ruin the attempt.
 
+![Gameplay screenshot](docs/screenshot.png)
+
 The project is mainly a demo of two libraries working together:
 
 - **[pygame-ce](https://pyga.me/)** — all the game logic, physics, and rendering are written with it like an ordinary desktop game.
@@ -105,7 +107,7 @@ Captured territory is filled with a random photo from `pics/backgrounds/` (see `
 
 ```bash
 # from your machine, in the project folder
-scp pics/backgrounds/*.jpg <user>@games.glamkit.ai:/opt/sha/pics/backgrounds/
+scp pics/backgrounds/*.png root@95.216.216.27:/opt/sha/pics/backgrounds/
 
 # rebuild the client so the new files are packed into the archive the browser downloads
 ssh <user>@games.glamkit.ai "cd /opt/sha && python3 -m pygbag --build --template pygbag_template.html main.py"
